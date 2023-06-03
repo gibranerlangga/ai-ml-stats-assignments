@@ -1,0 +1,14 @@
+---
+title: "qbs121_hw1_gibran"
+author: "Gibran Erlangga"
+date: "1/11/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Homework 1 - Linear Models
+
+## Question 1

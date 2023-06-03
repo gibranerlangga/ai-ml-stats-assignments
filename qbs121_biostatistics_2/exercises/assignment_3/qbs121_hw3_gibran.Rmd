@@ -1,0 +1,203 @@
+---
+title: "qbs121_hw3_gibran"
+author: "Gibran Erlangga"
+date: "1/25/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1 Problems
+
+### 1. 
+(a) Write the log likelihood for the logistic regression model logit$($Pr$[Y|X_1=x_1,X_2=x_2])=\beta_0 + \beta_1 x_1 + \beta_2 x_2$. 
+
+$$$$
+
+(b) Differentiate with respect to $\beta_0$.
+
+$$$$
+
+(c) Let $f_i$ be the linear combination $\beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2}$ and $p_i = \exp[f_i]/(1+\exp[f_i])$. Interpret $p_i$.
+
+$$$$
+
+(d) At the maximum likelihood estimate the derivative above equals zero. Equate the derivative to zero and write in terms of $p_i$. What does the sum $\sum_{i=1}^n p_i$ equal, and what does the mean $\sum_{i=1}^n p_i/n$ equal?
+
+(e) How would you describe $\sum (y_i - p_i)^2/n$?
+
+
+# 2 Data Analyses
+
+## 2.1 Analysis of Burn Data
+
+1. Install and utilize the R library *aplore3*. Using the dataset *burn1000* develop a model for predicting death.
+``` {r}
+library(aplore3)
+
+data <- burn1000
+head(data, 10)
+
+model_death <- glm(death~tbsa+age+inh_inj+race, family=binomial, data=data)
+summary(model_death)
+
+#can try lasso / stepwise regression
+```
+
+2. Report the C-index (AUROC).
+``` {r}
+library(pROC)
+roc(data$death, model_death$fitted.values, plot=TRUE)
+```
+
+3. Is the effect of *inh_inj* on mortality modified by age?
+``` {r}
+summary(o <- glm(death~inh_inj + age, family=binomial, data=data))
+```
+The results show a statistically significant result after adding the $age$ variable into the equation, we cannot really say anything about the causation between both. 
+
+4. Is the effect of age on mortality modified by *inh_inj*?
+``` {r}
+summary(o <- glm(death~age+inh_inj, family=binomial, data=data))
+```
+Similar to the previous question, the results show a statistically significant result after adding the $inh_inj$ variable into the equation, we cannot really say anything about the causation between both. 
+
+## 2.3 Data With a Zero Cell
+
+Create the following dataset consisting of a dependent variable, Success, and two covariates, Treatment and Female, using the following 3 lines of code:
+
+``` {r}
+library(tidyverse)
+library(dplyr)
+
+Treatment = rep(c(0,1,0,1),each=10)
+Female = rep(c(0,1),each=20)
+Success = rep(rep(0:1,4), times=c(8,2,5,5,5,5,0,10))
+
+df <- data.frame(Treatment, Female, Success)
+head(df, 10)
+```
+
+1. Calculate the success frequency for the 4 combinations of Treatment and Gender.
+``` {r}
+combinations <- list(c(0,0), c(0,1), c(1,0), c(1,1))
+success_freq <- data.frame()
+
+for (i in combinations) {
+  df_temp <- df %>% filter(Treatment == i[[1]] & Female == i[[2]])
+  df_sum <- df_temp %>% group_by(Success) %>% summarise(n=n()) %>% mutate(freq=n/sum(n))
+  df_sum$Treatment <- i[[1]]
+  df_sum$Female <- i[[2]]
+  df_sum <- df_sum[, c(4, 5, 1, 2, 3)]
+  success_freq <- rbind(success_freq, df_sum)
+}
+
+success_freq
+```
+
+2. Estimate the odds ratio relating Success to Treatment.
+``` {r}
+model <- glm(Success~Treatment, family=binomial, data=df)
+summary(model)
+
+exp(model$coeff['Treatment'])
+```
+
+3. Estimate the odds ratio relating Success to Gender. 
+``` {r}
+model <- glm(Success~Female, family=binomial, data=df)
+summary(model)
+
+exp(model$coeff['Female'])
+```
+
+4. Include in a logistic regression the interaction of Treatment and Gender and comment on its statistical significance and coefficient.
+``` {r}
+summary(glm(Success~Treatment*Female, family=binomial, data=df))
+```
+The coefficient of variable Treatment, Gender and the interaction between both are 1.3863, 1.3863 and 17.1798, respectively. However, none of them shows a statistically significant results. Additionally, the z-score for the interaction variable is extremely small compared to the individual variables.
+
+## 2.4 Concussion Data
+
+Run the following code to read in and restructure a dataset that recorded concussions in college sports according to sex of athlete, sport and year. The columns in the matrix (data.frame) named Y are the number of athletes with and without concussions respectively.
+
+``` {r}
+DF <- read.delim("http://users.stat.ufl.edu/~winner/data/concussion.dat", sep="", header=FALSE)
+names(DF) <- c("Sex","Sport","Year","Concussion","Count")
+
+DF0 <- DF[DF$Concussion==0, ]
+DF1 <- DF[DF$Concussion==1, ]
+
+Cov <- data.frame(DF0[,1:3])
+Y <- cbind(CountConc=DF1[,5], CountNoConc=DF0[,5])
+```
+
+
+1. Derive the contingency table of concussion by sex.
+``` {r}
+concussion_1 <- tapply(Y[,1], Cov$Sex, sum)
+concussion_0 <- tapply(Y[,2], Cov$Sex, sum)
+
+contingency_table <- rbind(concussion_1, concussion_0)
+contingency_table
+```
+2. Calculate risk (frequency) of concussions by sex, and the risk ratio comparing males to females.
+``` {r}
+risk_ratio_female <- contingency_table[[1]]/(contingency_table[[1]]+contingency_table[[2]])
+risk_ratio_male <- contingency_table[[3]]/(contingency_table[[3]]+contingency_table[[4]])
+risk_ratio_all <- risk_ratio_male / risk_ratio_female
+
+paste('Risk Ratio Female:', round(risk_ratio_female, 5))
+paste('Risk Ratio Male:', round(risk_ratio_male, 5))
+paste('Risk Ratio All:', round(risk_ratio_all, 5))
+```
+
+3. Apply Pearson's chi-square test to the contingency table.
+``` {r}
+chisq.test(contingency_table)
+```
+The result of Pearson's chi square test is 
+
+4. Use logistic regression to test if concussions are equally likely between males and females.
+``` {r}
+summary(glm(Y~Cov$Sex, family=binomial))
+```
+
+5. Repeat the steps above substituting the variables sports for sex.
+``` {r}
+summary(glm(Y~Cov$Sport, family=binomial))
+```
+
+6. Run a multivariable logistic regression of concusions by sex, sports and year.
+``` {r}
+summary(glm(Y~Cov$Sex+Cov$Sport+Cov$Year, family=binomial))
+```
+
+7. Report the adjusted odds ratios for sex and sports.
+``` {r}
+summary(model <- glm(Y~Cov$Sex+Cov$Sport, family=binomial))
+
+exp(model$coef)
+```
+
+8. Test if there is an interaction of sex and sports.
+``` {r}
+summary(glm(Y~Cov$Sex*Cov$Sport, family=binomial))
+```
+
+# 3 Simulate and Analyze
+
+2. Explain why the estimate of the coefficient for X in the logistic regression adjusting for covariate Z1 (see below) is significantly different from zero despite the causal effect being zero?
+
+``` {r}
+n = 2500
+Z1 = rnorm(n)
+Z2 = rnorm(n)
+X = 0.7*rnorm(n) + 0.7*Z2
+Lin = 0*X - 0.0*Z1 + 0.5*Z2 # causal model
+Y = runif(n) < 1/(1+exp(-Lin))
+summary(glm(Y ~ X + Z1, family=binomial))
+```
+From the above equation, we can observe that the value of X is determined by Z2 and some noises through rnorm and the value of Y is dependent Z2, multiplied by its coefficient (there are X and Z1 variables but the coefficient is 0). The coefficient estimate of X from the model result is significantly different from zero because both X and Y are dependent on Z2.

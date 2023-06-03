@@ -1,0 +1,183 @@
+---
+title: "qbs121_hw5_gibran"
+author: "Gibran Erlangga"
+date: "2/15/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Questions 
+Choose two online datasets that are suitable for use demonstrating (1) normal linear mixed and (2) binary/poisson mixed models. These can be either longitudinal or simply clustered, but should include covariates as well as cluster indicators.
+1. For both the linear and nonlinear analyses, describe and justify the longitudinal/clustered outcomes and covariates and the plan for fitting and interpreting mixed random and fixed effects models.
+2. Fit the models using lmer and glmer and provide summary statistics and graphs for summarizing the results and assessment of modeling assumptions.
+
+## Dataset Justifications
+For normal linear mixed models, I am using the "House Prices in the City of Windsor, Canada" dataset, which contains these following variables: \
+price      = sale price of a house \
+lotsize    = the lot size of a property in square feet \
+bedrooms   = the number of bedrooms \
+bathrooms  = the number of full bathrooms \
+stories    = the number of stories excluding basement \
+driveway   = 1 if the house has a driveway \
+recreation = 1 if the house has a recreational room \
+fullbase   = 1 if the house has a full finished basement \
+gasheat    = 1 if the house uses gas for hot water heating \
+aircon     = 1 if there is central air conditioning \
+garage     = the number of garage places \
+prefer     = 1 if the house is located in the preferred neighbourhood of the city \
+
+Cluster indicator in this data set is the prefer variable, which separates between houses that reside in preferred neighborhood in the city and not. The dependent variable is price, and the rest of the variables stated above are the independent variables.
+
+For binary/poisson mixed models, I am using "lung cancer" data set. This data set is sourced from a large Health Maintenance Organization (HMO) wants to know what patient and physician factors are most related to whether a patient’s lung cancer goes into remission after treatment as part of a larger study of treatment outcomes and quality of life in patients with lung cancer.
+
+Cluster indicator in this data set is the Doctor ID (DID) variable, which indicates from which doctor unique identifier. The dependent variable is remission, and I plan to use IL6, CRP, CancerStage as patient level categorical independent variables, and Experience as doctor level continuous independent variable.
+
+## Normal Linear Mixed Model
+``` {r}
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(lme4)
+
+data <- read.csv('HousePrices.csv')
+```
+
+The dataset describes house prices in the city of Windsor, Canada (546 rows and 13 columns). The dependent variable is house price, which signifies by the "price" column. The rest of the variables signify all the details about each house presented in the dataset (house size in square feet, number of bedrooms, bathrooms, garages, as well as other factors such as whether or not the house is located in the preferred neighborhood of the city). We can see some sample data from the dataset along with the distribution of the dependent variable below:
+``` {r}
+paste('# of rows/# of columns:', dim(data)[1] ,'/', dim(data)[2])
+
+print('list of columns: ')
+names(data)
+
+# see some sample data
+print(head(data, 3))
+
+# plot dependent and independent variables
+par(mfrow=c(1,2))
+hist(data$price)
+hist(log(data$price))
+```
+Above figures show the distribution of the dependent variable, the original one (left) and the one after applying a log transformation to the data (right). We can observe that the house price distribution is skewed to the right, meaning that it has a long right tail and the variable mean to the right of the median. To comply with one of the assumptions of linear regression, I applied a log-transform to the house price variable to make it more normally distributed.
+
+I selected a handful of independent variables as potential predictors for the house price. The variables are:
+lotsize -> lot size of a property in square feet
+bedrooms -> number of bedrooms
+stories -> number of stories excluding basement
+garage -> number of garages
+prefer -> a flag that shows whether the house located in the preferred neighborhood of the city
+
+
+``` {r}
+boolean_convert <- function(data) {
+  if (data == "yes") {
+    return(1)
+  } else {
+    return(0)
+  }
+}
+
+data$prefer <- sapply(data$prefer, boolean_convert)
+
+df <- data %>%
+      select('price', 'lotsize', 'bedrooms', 'stories', 'garage', 'prefer')
+
+ggpairs(df)
+```
+Aside from price column, from above graph we can see that lotsize column also shows a right-skewed distribution, so I applied a log transformation to make it more normally distributed. Here's what it looks like before-after (graph below, left-right):
+``` {r}
+par(mfrow=c(1,2))
+hist(data$lotsize)
+hist(log(data$lotsize))
+```
+And I also plotted the distribution of other independent variables (bedrooms, stories, garage, prefer) I chose earlier. 
+``` {r}
+par(mfrow=c(1, 4))
+hist(data$bedrooms)
+hist(data$stories)
+hist(data$garage)
+hist(data$prefer)
+```
+
+``` {r}
+df$log_price <- log(df$price)
+
+log_price_mixed <- lmer(log_price ~ log(lotsize) + (1 | prefer), data = df)
+summary(log_price_mixed)
+plot(log_price_mixed)
+```
+In above modeling attempt, I set prefer as a random effect to the model, while setting up log(lotsize) as a fixed effect. We can see the details of the coefficient on prefer variable in the random effect section and coefficient on log(lotsize) on the fixed effect section, along with its consecutive standard error. Additionally, we can also see the number of observations (546) and the level 2 observations (2) in the details of random effect.
+
+``` {r}
+log_price_mixed_cluster <- lmer(log_price ~ log(lotsize) + bedrooms + garage + stories + 
+                                  (1 | prefer), data = df)
+summary(log_price_mixed_cluster)
+plot(log_price_mixed_cluster)
+```
+The results above show the similar modeling framework, only with an additional variables included as the predictors for fixed effects (bedrooms, garage, stories). We can compare this with the result on previous model where we only use log(lotsize) as fixed effect. We can see that the coefficients of both random and fixed effects got adjusted with the presence of additional variables. The changes on random effect coefficient is not that much while the changes on fixed effect coefficient (log(lotsize)) seems to be more apparent.
+``` {r}
+# mixed random effects
+log_price_mixed_random <- lmer(log_price ~ log(lotsize) + garage + stories + 
+                               (1 + log(lotsize) | prefer), data = df)
+summary(log_price_mixed_random)
+
+predicted_log_price <- predict(log_price_mixed_random, type="response")
+
+# back-transform from log into original unit
+back_transform <- function(data) {
+  return(10**data)
+}
+
+predicted_price <- sapply(predicted_log_price, back_transform)
+
+par(mfrow=c(1,2))
+plot(predicted_log_price, ylab="Predicted log house price")
+plot(predicted_price, ylab="Predicted house price")
+```
+
+## Binary/Poisson Mixed Model
+``` {r}
+data_binary <- read.csv('https://stats.idre.ucla.edu/stat/data/hdp.csv')
+```
+
+``` {r}
+data_binary <- within(data_binary, {
+  Married <- factor(Married, levels = 0:1, labels = c("no", "yes"))
+  DID <- factor(DID)
+  HID <- factor(HID)
+  CancerStage <- factor(CancerStage)
+})
+
+# plotting numerical independent variables
+ggpairs(data_binary[, c("IL6", "CRP", "Experience")])
+```
+It looks like IL6 and CRP variable have a right-skewed distribution, so I applied the square-root transformation on IL6 and CRP columns to make it more normally distributed. On the other side, Experience, tumorsize and co2 have bell-shaped, normal distribution. We can see that there are no strong correlation between our continuous independent variables, so each variable brings a different information to the model.
+``` {r}
+data_binary$IL6 <- sqrt(data_binary$IL6)
+data_binary$CRP <- sqrt(data_binary$CRP)
+
+ggpairs(data_binary[, c("IL6", "CRP", "Experience")])
+```
+
+``` {r}
+m <- glmer(remission ~ IL6 + CRP + CancerStage + Experience +
+    (1 | DID), data = data_binary, family = binomial, nAGQ = 10)
+
+summary(m)
+```
+
+In code above, I used the glmer command to run a mixed effects logistic regression model with Il6 and CRP as patient level continuous predictors, CancerStage as a patient level categorical predictor (I, II, III, or IV), Experience as a doctor level continuous predictor, a random intercept by DID (doctor ID) and remission as the dependent variable.
+
+The first part tells us the estimates are based on an adaptive Gaussian Hermite approximation of the likelihood. In particular we used 10 integration points. I specified 10 integration points (nAGQ) to ensure convergence and not taking too much computational power (increase in integration points will improve probability of convergence, but also increase computational power needed to run the model).
+
+The next section gives us basic information that can be used to compare models, followed by the random effect estimates. This represents the estimated variability in the intercept on the logit scale. Had there been other random effects, such as random slopes, they would also appear here. It also shows the total number of observations, and the number of level 2 observations. In our case, this includes the total number of patients (8,525) and doctors (407).
+
+The next section is a table of the fixed effects estimates. The estimates represent the regression coefficients. These are unstandardized and are on the logit scale. The estimates are followed by their standard errors (SEs). The SE values here are approximations because it is more likely to stabilize faster than actual SEs. Therefore, if you are using fewer integration points, the estimates may be reasonable, but the approximation of the SEs may be less accurate. The Wald tests, (frac{Estimate}{SE}), rely on asymptotic theory, here referring to as the highest level unit size converges to infinity, these tests will be normally distributed, and from that, p values (the probability of obtaining the observed estimate or more extreme, given the true estimate is 0).
+
+The last section shows us the correlation values between fixed effect variables. I think the correlation values shown here are pretty great, as most of the values are not correlated except for CancrStgII-CancrStgIII and CancrStgIII-CancrStgIV.
+
+``` {r}
+plot(m)
+```

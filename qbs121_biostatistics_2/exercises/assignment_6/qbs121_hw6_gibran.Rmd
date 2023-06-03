@@ -1,0 +1,184 @@
+---
+title: "qbs121_hw6_gibran"
+author: "Gibran Erlangga"
+date: "2/21/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## GEE
+
+Using the data sets you used for for Week 5 for LMM and GLMM models:
+
+1. Refit the models for both LMM and GLMM using generalized estimating equations:
+``` {r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(geepack)
+library(lme4)
+library(mice)
+
+# LMM
+data <- read.csv('HousePrices.csv')
+
+# data preprocessing
+boolean_convert <- function(data) {
+  if (data == "yes") {
+    return(1)
+  } else {
+    return(0)
+  }
+}
+
+data$prefer <- sapply(data$prefer, boolean_convert)
+
+df <- data %>%
+      select('price', 'lotsize', 'bedrooms', 'stories', 'garage', 'prefer')
+
+# binary
+data_binary <- read.csv('https://stats.idre.ucla.edu/stat/data/hdp.csv')
+```
+
+1a. Use the family/link function assumptions and  working correlation structures that closest to the assumptions used in the previous LMM and GLMM fits. For instance, a random cluster effect in LMM/GLMM would be closest to an exchangeable working correlation matrix. Contrast the fitted coefficients for fixed effects from the GEE models to those you got from LMM and GLMM, and comment on any differences that might be seen between the coefficient estimates and standard errors.
+
+``` {r}
+# modeling
+model <- lmer(log(price) ~ log(lotsize) + bedrooms + garage + stories + 
+                (1 | prefer), data = df)
+print(summary(model))
+
+model_gee <- geeglm(log(price) ~ log(lotsize) + bedrooms + garage + stories, 
+                    id=prefer, family=gaussian, data = df)
+print(summary(model_gee))
+
+model_binary <- glmer(remission ~ IL6 + CRP + CancerStage + Experience +
+    (1 | DID), data = data_binary, family = binomial, nAGQ = 10)
+print(summary(model_binary))
+
+model_binary_gee <- geeglm(remission ~ IL6 + CRP + CancerStage + Experience, 
+                           id=DID, data = data_binary, family = binomial)
+print(summary(model_binary_gee))
+```
+Between the lmer() and geeglm() model for continuous outcome above, the coefficients differ by varying degree. For the intercept, bedrooms, garage and stories variables, the coefficient we got from lmer() is higher than geeglm(), while the log(lotsize) coefficient is lower in lmer() compared to geeglm(). For standard error values between the two models, all variables have lower standard errors except for bedrooms and garage variables. 
+
+For the binary outcome, the coefficients of intercept, IL6, CRP, CancerStageIII and CancerStageIV are higher in geeglm() compared to glmer(). For the standard errors, all variables have lower standard error values in geeglm() compared to glmer() except for CancerStageII.
+
+1.b Use the alternative working correlation structures available in GEE to see if that results in are any further differences in the estimated regression coefficients and standard errors. 
+
+``` {r}
+model_gee_exc <- geeglm(log(price) ~ log(lotsize) + bedrooms + garage + stories, 
+                        id=prefer, family=gaussian, data = df, 
+                        corstr='exchangeable')
+print(summary(model_gee_exc))
+
+model_gee_ar1 <- geeglm(log(price) ~ log(lotsize) + bedrooms + garage + stories, 
+                        id=prefer, family=gaussian, data = df, 
+                        corstr='ar1')
+print(summary(model_gee_ar1))
+
+model_binary_gee_exc <- geeglm(remission ~ IL6 + CRP + CancerStage + Experience, 
+                               id=DID, data = data_binary, family = binomial, 
+                               corstr='exchangeable')
+print(summary(model_binary_gee_exc))
+
+model_binary_gee_ar1 <- geeglm(remission ~ IL6 + CRP + CancerStage + Experience, 
+                               id=DID, data = data_binary, family = binomial, 
+                               corstr='ar1')
+print(summary(model_binary_gee_ar1))
+```
+I tried two correlation structures from GEE: exchangeable and independence. 
+
+Seeing the results of geeglm() with exchangeable as the working correlation structure for continuous outcome, I observed similar pattern as the default geeglm() result from previous question except for the intercept coefficient, where it has a higher coefficient value in geeglm() compared to lmer(). For standard error values between the two models, all variables have lower standard errors in geeglm() except for garage variable. 
+
+Seeing the results of geeglm() with ar1 as the working correlation structure for continuous outcome, the intercept and stories variables have higher coefficient values in geeglm() compared to lmer(), while the rest of the variables have lower coefficient values in geeglm() compared to lmer(). For standard error values between the two models, all variables have lower standard errors in geeglm() except for garage variable. 
+
+Looking at the results of geeglm() with exchangeable as the working correlation structure for binary outcome, all variables have higher coefficient values in geeglm() compared to glmer() except for Experience variable. For standard error values between the two models, all variables have lower standard errors in geeglm() compared to glmer(). 
+
+Looking at the results of geeglm() with ar1 as the working correlation structure for binary outcome, all variables have higher coefficient values in geeglm() compared to glmer(). For standard error values between the two models, all variables have lower standard errors in geeglm() compared to glmer(), except for the intercept and Experience variables. 
+
+
+MISSING DATA: MICE
+
+2.  For missing data, choose online data sets suitable for both binary and continous outcome regressions involving multiple predictor variables using glm.
+
+Data Dictionary: \
+GPA           - First-year college GPA on a 0.0 to 4.0 scale \
+HSGPA	        - High school GPA on a 0.0 to 4.0 scale \
+SATV	        - Verbal/critical reading SAT score \
+SATM	        - Math SAT score \
+Male	        - 1= male, 0= female \
+HU	          - Number of credit hours earned in humanities courses in high school \
+SS	          - Number of credit hours earned in social science courses in high school \
+FirstGen	    - 1= student is the first in her or his family to attend college, 0=otherwise \
+White	        - 1= white students, 0= others \
+CollegeBound	- 1=attended a high school where >=50% students intended to go on to college, 0=otherwise \
+
+``` {r}
+data <- read.csv('FirstYearGPA.csv')
+```
+
+2.b Using similar techniques discussed in class, create MAR and MCAR missingness in the outcome variable. These are specified in the .rmd file posted for the class.  For MAR, this involves assigning outcome or predictor variable values to be missing depending on the value of an variable that is completely nonmissing. For MCAR, this can be just randomly assigning values of the outcome variable to be missing.
+``` {r}
+n <- dim(data)[1]
+
+# missing at random (MAR)
+# A case where the probability of being missing is the same only within 
+# groups defined by the observed data
+selectht<-data$HU<median(data$HU)
+ns<-sum(selectht)
+data$HSGPA_M<-data$HSGPA
+data$HSGPA_M[selectht][runif(ns)<0.5] <- NA
+
+# Missing Completely at Random (MCAR)
+# A case where the probability of being missing is the same for all cases
+data$GPA_M <- ifelse(runif(n)<0.5, NA, data$GPA)
+
+# plot missing data
+data_model <- data[, c("GPA_M", "HSGPA_M", "SATV", "SATM", "White", "FirstGen")]
+md.pattern(data_model)
+
+# model on no missing data
+print(summary(lm(GPA ~ HSGPA + SATV + SATM + White + FirstGen, data=data)))
+
+# model with MAR
+print(summary(lm(GPA ~ HSGPA_M + SATV + SATM + White + FirstGen, data=data)))
+
+# model with MAR + MCAR
+print(summary(lm(GPA_M ~ HSGPA_M + SATV + SATM + White + FirstGen, data=data)))
+```
+
+Fit the models with and without multiple imputation and compare the results. Also suggest how to create (not missing at random) NMAR missingness, and outline how this might be implemented. This need not be programmed.
+``` {r}
+#data_raw
+print(summary(lm(GPA_M ~ HSGPA_M + SATV + SATM + White + FirstGen, data=data)))
+
+# plot missing data
+md.pattern(data_model)
+
+# MICE method
+imput_mice <- mice(data_model, m=5)
+imput_mice_fit <- with(data=imput_mice, exp=lm(GPA_M ~ HSGPA_M + SATV + SATM + 
+                                                 White + FirstGen))
+summary(pool(imput_mice_fit))
+```
+
+MNAR means that the probability of being missing varies for reasons that are unknown to us. To create Not Missing at Random (NMAR) missing values, we should do the following steps:
+1. Choose the pattern of missingness
+2. Choose the variable(s) to be applied the missingness pattern on
+3. Choose the base distribution to be applied to the variable(s) with the chosen pattern of missingness. Ideally this should not be a uniform distribution, because we want the probability of missingness on each row to be different with each other (e.g. log-normal distribution)
+
+Covariate Measurement Error
+
+2.c In the same models, add substantial additive measurement error to a continuous predictor variable and see how estimates are affected for the variable of interest and for the other variables in the model. This can be done using the rnorm() statement in R.
+``` {r}
+# add measurement error on continuous variable
+ data$HSGPA_error_noise <- data$HSGPA + rnorm(219, 0.1, 1)
+
+model <- lm(GPA ~ HSGPA + SATV + SATM + White + FirstGen, data=data)
+model_noise <- lm(GPA ~ HSGPA_error_noise + SATV + SATM + White + FirstGen, 
+                  data=data)
+summary(model)
+summary(model_noise)
+```

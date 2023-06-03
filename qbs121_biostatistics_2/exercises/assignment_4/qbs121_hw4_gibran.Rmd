@@ -1,0 +1,274 @@
+---
+title: "qbs121_hw4_gibran"
+author: "Gibran Erlangga"
+date: "2/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1.1 Modelling Student Absences
+Analyze the dataset quine which comes with the R library MASS. The dependent variable is number of student absences. 
+``` {r}
+library(MASS)
+data <- quine
+```
+
+
+1. Put together a table of univariable (1 covariate at at time) results on how each of the covariates relate to student absences.
+
+``` {r}
+attach(data)
+
+dependent_var <- "Days"
+vars <- names(data)[!names(data) %in% dependent_var]
+ratios_df <- matrix(nrow=0, ncol=4)
+
+df <- c()
+
+for (var in vars) {
+  model <- summary(glm(Days~data[, var]))
+  coef <- model$coef[2, ]
+  ratios_df <- rbind(ratios_df, c(exp(model$coef[2,1:2] %*% matrix(nrow=2, ncol=3, c(1,0,1,-2,1,+2))), 
+                                  model$coef[2,4]))
+
+  df <- rbind(df, coef)
+}
+
+# set column name and row index
+dimnames(ratios_df)[[2]] <- c("Odds Ratio", "95% CI", "Up", "P-value")
+dimnames(ratios_df)[[1]] <- vars
+print(ratios_df)
+
+# store column name to col_names var
+col_names <- colnames(df)
+
+# set iindex, but it removes the column names
+dimnames(df) <- list(vars)
+
+# put column names back
+colnames(df) <- col_names
+
+print(df)
+```
+
+2. Put together a table of multivariable results, i.e., run a multivariable model using all of the variables (or a subset if you choose).
+``` {r}
+model_multivariate <- glm(Days~Eth + Sex + Age + Lrn)
+summary(model_multivariate)
+```
+
+3. Do this in two ways, (i) using Poisson regression in conjunction with sandwich variance to determine standard errors (or by selecting family=quasipoisson in the glm function) and (ii) negative binomial regression. Comment on the difference or similarity between the two sets of results.
+``` {r}
+# poisson regression
+model_poisson <- glm(Days~Eth + Sex + Age + Lrn, family=quasipoisson)
+summary(model_poisson)
+
+# negative binomial regression
+model_nb <- glm.nb(Days~Eth + Sex + Age + Lrn)
+summary(model_nb)
+
+detach(data)
+```
+Poisson regression results indicates that EthN is the only variable with a significant association with Days, with AgeF3 and LrnSL are the other variables which ranked 2nd and 3th in the p-value score (although not significant). Similarly, the result from negative binomial regression also gives the same notion, which says that EthN is the only variable with a significant association with Days, with AgeF1 as the variable in the 2nd lowest p-value score (although not significant).
+
+## 1.2 Cancer Counts in Danish Cities
+Access the data eba1977 in the R library ISwR. This is a small dataset on cancer counts by city and age group in Denmark.
+``` {r}
+library(ISwR)
+data <- eba1977
+head(data,3)
+```
+1. Which variable makes sense to use as an offset?
+Offset is the variable that is used to denote the exposure period in the Poisson regression. In this particular case, I think pop variable makes the most sense to be used as offset.
+
+2. a. Use Poisson regression to model the association with age group. b. Test the
+significance of age using anova(o.glm, test=”Chisq”) c. Test the association of age as
+an ordinal variable (hint: create ageOrdinal = as.numeric(age)).
+``` {r}
+# a. Use Poisson regression to model the association with age group.
+model_age_poisson <- glm(cases~age, offset=log(pop), family=poisson, data=data)
+summary(model_age_poisson)
+
+# b. Test the significance of age using anova(o.glm, test=”Chisq”)
+anova(model_age_poisson, test="Chisq")
+
+# c. Test the association of age as an ordinal variable
+ageOrdinal = as.numeric(data$age)
+model_age_ordinal_poisson <- glm(data$cases~ageOrdinal, offset=log(data$pop), family=poisson)
+summary(model_age_ordinal_poisson)
+```
+3. a. Use Poisson regression to model the association with city. b. Test the significance
+of city.
+``` {r}
+# a. Use Poisson regression to model the association with city.
+model_city_poisson <- glm(cases~city, offset=log(pop), family=poisson, data=data)
+summary(model_city_poisson)
+
+# b. Test the significance of age using anova(o.glm, test=”Chisq”)
+anova(model_city_poisson, test="Chisq")
+```
+
+4. Run the multivariable model with city and age.
+``` {r}
+model_city_age <- glm(cases~city+age, offset=log(pop), family=poisson, data=data)
+summary(model_city_age)
+```
+
+5. For interest, instead of using an offset include log(population) as a covariate. Is the
+coefficient significantly different from 1.0 ?
+``` {r}
+model_offset <- glm(cases~city+age+log(pop), family=poisson, data=data)
+summary(model_offset)
+```
+
+## 2.1 Large Counts: Linear Regression vs Poisson
+If the dependent variable is a count that takes large values (e.g. counts that are zero with very low frequency) it may be preferable to use linear regression.
+1. Choose a sample size, e.g. n=500
+``` {r}
+n=500
+```
+2. Generate a couple continuous variables, Z1=rnorm(n) and Z2=rnorm(n)
+``` {r}
+Z1=rnorm(n)
+Z2=rnorm(n)
+```
+3. Generate a large count Y=rpois(n, lambda=100*1.5**Z1/1.2**Z2)
+``` {r}
+Y=rpois(n, lambda=100*1.5**Z1/1.2**Z2)
+```
+4. Plot this count vs Z1, and then versus Z2
+``` {r}
+plot(Y, Z1)
+plot(Y, Z2)
+```
+5. Use multivariable Poisson regression to model Y vs Z1 and Z2.
+``` {r}
+model_poisson <- glm(Y~Z1+Z2, family=poisson)
+summary(model_poisson)
+```
+6. Use multivariable linear regression to model Y vz Z1 and Z2
+``` {r}
+model_linear <- glm(Y~Z1+Z2, family=gaussian)
+summary(model_poisson)
+```
+7. Use multivariable linear regression to model log(Y) vz Z1 and Z2
+``` {r}
+model_poisson <- glm(log(Y)~Z1+Z2, family=gaussian)
+summary(model_poisson)
+```
+8. Assess similarities and differences of the estimates, standard errors and Z-values from
+these three models.
+
+Similarities:  
+Most obvious one is the fact that both variables have highly significant p-values. Another similarity I can spot is the estimated coefficients of Z1 and Z2, as well as the t-value and z-value in log linear regression and poisson regression, respectively. Additionally, the value of standard error in both log linear regression and poisson regression are also similar, with the standard error value of log linear regression being slightly higher than the poisson regression. 
+Differences:  
+The coefficient estimates of Z1 and Z2 and its standard error from linear regression is significantly different from the other regression methods.
+
+
+## 3.1 AUROC as Measure of Difference of Two Distributions
+The AUROC of a score that predicts an event equals the probability that a subject with the event will have a higher score than a person without the event. If the distribution of the scores in subjects with the event is normal with mean m1 and s1 and the distribution of scores in subjects without the event is normal with mean m0 and s0, then the following R line of code estimates the concordancy.
+
+a. Create a table of Concordancy vs the following choices, m0=0,sd=1, m1 = 0.0, 0.25,0.5,0.75,1,1.5,2,3 and s1=1.
+``` {r, message=FALSE}
+library(pROC)
+```
+
+``` {r}
+m0 <- 0
+s0 <- 1
+m1 <- c(0, 0.25, 0.5, 0.75, 1.0, 1.5, 2, 3)
+s1 <- 1
+n <- 1000
+
+m0.values <- rep(0, 8)
+s0.values <- rep(1, 8)
+s1.values <- rep(1, 8)
+auc <- rep(0, 8)
+
+for (i in 1:8) {
+  auc[i] = mean(rnorm(n=n<-10^6, mean=m0, sd=s0) < rnorm(n=n, mean=m1[i], sd=s1))
+  }
+
+df <- data.frame(cbind(m0.values, s0.values, m1, s1.values, auc))
+df
+```
+
+b. Suppose a score for the risk of an event is such that its distribution in those who will have the event is normal with mean m1 and standard deviation of s1, and its distribution in those who will not have the event is mean 0 and standard deviation 1. Simulate the score of 1000 events (cases) and 1000 controls and plot the corresponding ROC curve for the following 4 scenarios (m1=0.5, s1=1), (m1=0.5, s1=2), (m1=2.0, s1=1), (m1=2.0, s1=2).
+To do this the following code could be helpful:
+``` {r}
+# m1=0.5, s1=1
+m1 <- 0.5
+s1 <- 1.0
+n <- 1000
+
+score_1 <- rnorm(n=n, mean=m1, sd=s1)
+score_base <- rnorm(n=n, mean=0, sd=1)
+event <- rep(c(1, 0), n)
+scores <- c(score_1, score_base)
+result <- roc(event, scores)
+
+print(paste(m1, s1))
+
+plot(result$specificities, result$sensitivities, type="line")
+
+# m1=2.0, s1=1
+m1 <- 2.0
+s1 <- 1.0
+n <- 1000
+
+score_1 <- rnorm(n=n, mean=m1, sd=s1)
+score_base <- rnorm(n=n, mean=0, sd=1)
+event <- rep(c(1, 0), n)
+scores <- c(score_1, score_base)
+result <- roc(event, scores)
+
+print(paste(m1, s1))
+
+plot(result$specificities, result$sensitivities, type="line")
+
+# m1=2.0, s1=2
+m1 <- 2.0
+s1 <- 2.0
+n <- 1000
+
+score_1 <- rnorm(n=n, mean=m1, sd=s1)
+score_base <- rnorm(n=n, mean=0, sd=1)
+event <- rep(c(1, 0), n)
+scores <- c(score_1, score_base)
+result <- roc(event, scores)
+
+print(m1, s1)
+
+plot(result$specificities, result$sensitivities, type="line")
+```
+
+## 3.2 ADR vs APC
+The most recommended modality for colorectal cancer screening in the USA is colonoscopy. During a colonoscopy a clinician uses a camera at the end of a tube (colonoscope) to examine the colon. The colonoscope is also equipped with features to remove pre-cancerous lesions (polyps, adenomas). Colonoscopists vary in their ability to detect polyps. One measure of detection ability is the Adenoma Detection Rate (ADR). It is defined as the proportion of colonoscopies in which at least one adenoma is detected; like the proportion of games in which an athlete gets at least one point. An alternative metric is the APC (adenomas per colonoscopies); like the average number of points per game. Explain what the following simulation is doing and interpret the results.
+
+``` {r}
+R <- 1000
+cor.ADR.true <- cor.APC.true <- R
+n.endoscopists <- 200 # number of endoscopists in the cohort
+
+for (r in 1:R) {
+  # number of patients each endoscopists scopes in a year
+  n.pt.endoscopist <- ceiling(rgamma(n=n.endoscopists, shape=10, scale=30))
+  N <- sum(n.pt.endoscopist)
+  ID.Endo <- rep(1:n.endoscopists, times=n.pt.endoscopist)
+  true.endo.rate <- runif(n.endoscopists , min=0.35,max=0.99) # given a uniform distribution
+  long.true.endo.rate <- rep(true.endo.rate, times=n.pt.endoscopist)
+  n.polyps <- rpois(n=N, lambda=0.6) # lambda is the average actual adenomas
+  n.polyps.detected <- rbinom(n=N, size=n.polyps, prob=long.true.endo.rate) 
+  at.least.one <- n.polyps.detected>0
+  ADR <- tapply(at.least.one, ID.Endo, mean)
+  APC <- tapply(n.polyps.detected , ID.Endo, mean)
+  cor.ADR.true[r] <- cor(ADR, true.endo.rate)
+  cor.APC.true[r] <- cor(APC, true.endo.rate)}
+
+pairs(cbind(true.endo.rate, ADR, APC))
+summary(cbind(cor.ADR.true, cor.APC.true))
+```
+The simulation is about Adenoma Detection Rate (ADR) and Adenomas per Colonoscopies (APR). The graph above is showing the correlation between ADR and true endoscopist rate, and also between APR and true endoscopist rate. APR seems to be fractionally better than ADR in its association with the value of true endo rate, but the discrepancy is not huge. Overall, I do not see any significant difference between both relational graphs (ADR vs true endo rate and APR vs true endo rate). This fact also supported by the strong linear association showed between ADR and APR in the graph.

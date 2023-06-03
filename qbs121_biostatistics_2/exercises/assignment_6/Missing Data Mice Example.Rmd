@@ -1,0 +1,56 @@
+---
+title: "Using MICE"
+author: "Tor Tosteson"
+date: "Feb 15 2022"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mice)
+```
+
+# Recall FEV Data from Week 2 on Linear Models
+```{r}
+FEV.Data <- read.delim("http://jse.amstat.org/datasets/fev.dat.txt", 
+sep="", header=FALSE)
+names(FEV.Data) <- c("Age","FEV","Height","Male","Smoker")
+summary(lm(FEV ~ Age + Height + Male + Smoker, data=FEV.Data))
+```
+# Lets create missing data either MAR or MCAR
+```{r}
+(n <- dim(FEV.Data)[1])
+#MCAR  Smokerm 
+
+FEV.Data$Smokerm <- ifelse(runif(n)<0.5, NA, FEV.Data$Smoker)
+#MAR Missing FEV depends on Height, 50% chance of missing if < median height
+selectht<-FEV.Data$Height<median(FEV.Data$Height)
+ns<-sum(selectht)
+FEV.Data$FEVM<-FEV.Data$FEV
+FEV.Data$FEVM[selectht][runif(ns)<0.5] <- NA
+md.pattern(FEV.Data)
+#complete data results
+summary(lm(FEV ~ Age + Height + Male + Smoker, data=FEV.Data))
+#with missing data, MAR
+summary(lm(FEVM ~ Age + Height + Male + Smoker, data=FEV.Data))
+# Another variable
+summary(lm(FEVM ~ Age + Height + Male + Smokerm, data=FEV.Data))
+```
+
+# Use MICE with missing FEV depending on height
+```{r}
+FEVDT=FEV.Data[,c("FEVM", "Age", "Male", "Height", "Smoker")]
+md.pattern(FEVDT)
+imp <- mice(FEVDT, m = 5)
+imp.fits <- with(data = imp, exp =  lm(FEVM ~ Age + Height + Male + Smoker))
+summary(pool(imp.fits))
+#include the Smoker variable with missingness
+FEVDT=FEV.Data[,c("FEVM", "Age", "Male", "Height", "Smokerm")]
+md.pattern(FEVDT)
+imp <- mice(FEVDT, m = 5)
+imp.fits <- with(data = imp, exp =  lm(FEVM ~ Age + Height + Male + Smoker))
+summary(pool(imp.fits))
+```

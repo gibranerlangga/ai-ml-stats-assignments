@@ -1,0 +1,289 @@
+---
+title: "qbs121_final_exam_gibran"
+author: "Gibran Erlangga"
+date: "3/9/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Analysis 1
+The data set "skindata" is on the Canvas site. The outcome variable Y is a count of the number of new skin cancers per year. The categorical variable Treatment is coded 1=beta‐carotene, 0=placebo. The variable Year denotes the year of follow‐up. The categorical variable Gender is coded 1=male, 0=female. The categorical variable Skin denotes the skin susceptibility and is coded 1=burns easily, 0=otherwise. The variable Exposure is a count of the number of previous skin cancers. The variable Age is the age (in years) of each subject at randomization.
+``` {r}
+skin_data <- read.csv('skindata.csv')
+head(skin_data, 3)
+```
+
+Variable List: ID, Center, Age, Skin, Gender, Exposure, Y, Treatment, Year.
+
+Reference: Greenberg, E.R., Baron, et. Al. (1990). A clinical trial of beta carotene to prevent basal‐cell
+and squamous‐cell cancers of the skin. New England Journal of Medicine, 323, 789‐795.
+
+1. For these data, an “intention to treat” (ITT) analysis which only looks at Treatment as a factor, while adjusting for clustering and longitudinal structure is conventional
+
+a. Fit a generalized linear mixed model (glmer), Poisson family, with Y as an outcome, a log link function, an effect for Treatment, Year as a continuous variable, and a random intercept for the individual. Write equations to specify this model and state the assumptions.
+``` {r}
+library(lme4)
+
+model <- glmer(Y ~ Treatment + Year + (1 | ID), family=poisson(link="log"), data=skin_data)
+summary(model)
+```
+Assumptions: I assume that there is a different trend happened for every individual, so we set the individual as the random intercept of the model.
+
+b. Give the estimated variance of the random effects and show a histogram of the estimated random effects empirical Bayes estimates. With glmer, EB estimation requires the package merTools. The function REextract() extracts the EB estimates. Does the model seem reasonable?
+``` {r}
+library(merTools)
+
+model_bayes <-REextract(model)
+hist(model_bayes$`(Intercept)`)
+```
+
+c. Using the same data, fit generalized estimating equation models with a Poisson family and log link and compound symmetry (“exchangeable”) working correlation matrices using the same fixed effects as in 1a.
+``` {r}
+library(geepack)
+
+model_gee<-geeglm(Y~Treatment+Year, family=poisson(link='log'), 
+                id=ID, corstr="exchangeable", data=skin_data)
+summary(model_gee)
+```
+d. Compare the treatment effect estimates with the generalized linear mixed model, and discuss any differences in interpretation.
+
+Estimations in GLMM are used to estimate the individual coefficient separately before getting the average, while estimations in GEE are used to compute the population's average log odds. The Treatment and Year estimates from GLMM are 0.17309 and 0.01827 with standard errors of 0.09978 and 0.01792, while from the GEE we got 0.1478 and 0.0173, with standard errors of 0.1094 and 0.0247. We can see that the estimates we got from GEE are lower than the GLMM, but the the values for standard error are slighly higher compared to the standard errors we got from GLMM.
+
+2. Add the “Exposure” variable to the models above.
+a. Evaluate the strength of the association of this variable with the outcome.
+``` {r}
+model_w_exposure <- glmer(Y ~ Treatment + Year + Exposure + (1 | ID), family=poisson(link="log"), data=skin_data)
+summary(model_w_exposure)
+```
+b. Generate missing data indicators for each observation where the missingness probabilities depends on the Exposure variable being above or below a threshold. Apply this to the outcome Y (eg. make it NA), and refit the model. At least 20% of the outcomes should be missing. Compare the missing data rates in each arm. Comment of the difference in treatment effect estimates and confidence intervals for the estimates when applying the ITT analyses to the new dataset with and without using the Exposure variable.
+``` {r}
+library(mice)
+
+# generate missing data, threshold set to 3 for 22% missing data on outcome 
+skin_data$Y_missing <- ifelse(skin_data$Exposure > 3, NA, skin_data$Exposure)
+
+# try fitting the model on data with missing values
+
+# w exposure
+model <- glmer(Y_missing ~ Treatment + Year + Exposure + (1 | ID), family=poisson(link="log"), data=skin_data)
+summary(model)
+confint(model)
+
+# wo exposure
+model <- glmer(Y_missing ~ Treatment + Year + (1 | ID), family=poisson(link="log"), data=skin_data)
+summary(model)
+#confint(model)
+
+md.pattern(skin_data)
+```
+c. Comment on the need for adjustments for Exposure in this randomized study.
+
+Exposure variable is the only significant variable in the model result above, with coefficient estimate of 0.561.
+
+## Data Analysis 2
+
+The dataset reports survival (or censoring) time in years. Individuals with an event (death) are coded
+as 1, and censoring is coded as 0. The independent variable of primary interest is Treatment (1 = invasive surgery, 0 = less invasive procedure). Other covariates are Female (biological sex is 1 if female, o otherwise), Age, am ordinal Disease Score from 1 to 5 and a Biomarker for which higher is meant to meant worse prognosis.
+``` {r}
+surv_data <- read.delim('ExamSurvData-1.txt')
+head(surv_data)
+```
+1. a. Describe the distribution of the biomarker.
+``` {r}
+head(surv_data)
+
+hist(surv_data$Biomarker)
+print("The Biomarker distribution seems to be right-skewed. We can apply log-transform on the variable to make it more normally distributed.")
+
+hist(log(surv_data$Biomarker))
+```
+b. Report the Pearson and Spearman correlations of the Biomarker with age, disease score and biological sex (or the latter do a two‐sample t‐test).
+``` {r}
+library(tidyverse)
+library(ggpubr)
+
+# age
+cor_biomark_age_pearson <- cor.test(surv_data$Biomarker, surv_data$Age, 
+                                    method="pearson")$estimate
+cor_biomark_age_spearman <- cor.test(surv_data$Biomarker, surv_data$Age, 
+                                     method="spearman")$estimate
+
+paste("Pearson correlation value between Biomarker and Age is ", 
+      round(cor_biomark_age_pearson,3))
+paste("Spearman correlation value between Biomarker and Age is ", 
+      round(cor_biomark_age_spearman,3))
+
+# disease score
+cor_biomark_dis_pearson <- cor.test(surv_data$Biomarker, surv_data$Disease.Score, method="pearson")$estimate
+cor_biomark_dis_spearman <- cor.test(surv_data$Biomarker, surv_data$Disease.Score, method="spearman")$estimate
+
+paste("Pearson correlation value between Biomarker and Disease Score is ", 
+      round(cor_biomark_dis_pearson,3))
+paste("Spearman correlation value between Biomarker and Disease Score is ", 
+      round(cor_biomark_dis_spearman,3))
+
+# sex
+cor_biomark_sex_pearson <- cor.test(surv_data$Biomarker, surv_data$Female, method="pearson")$estimate
+cor_biomark_sex_spearman <- cor.test(surv_data$Biomarker, surv_data$Female, method="spearman")$estimate
+
+paste("Pearson correlation value between Biomarker and Sex is ", 
+      round(cor_biomark_sex_pearson,3))
+paste("Spearman correlation value between Biomarker and Sex is ", 
+      round(cor_biomark_sex_spearman,3))
+
+# using two-sample t-test
+women_biomarker <- surv_data %>%
+  filter(Female == 1) %>%
+  pull(Biomarker)
+men_biomarker <- surv_data %>%
+  filter(Female == 0) %>%
+  pull(Biomarker)
+# Compute t-test
+res <- t.test(women_biomarker, men_biomarker)
+res
+```
+c. Develop a model for the association of the biomarker age, disease score and sex. Comment on the findings.
+``` {r}
+model <- lm(Biomarker ~ Age + Disease.Score + Female, data=surv_data)
+summary(model)
+```
+The only significant independent variable in the model above is Disease Score, with coefficient value of 4.153.
+
+d. Using the model above how does a unit increase in the disease score affect the biomarker.
+``` {r}
+print('One unit increase in disease score variable yields in 4.153 unit increase in Biomarker variable.')
+```
+
+e. For the multivariable model in part c which yields better fit, the log‐transformed biomarker or non‐transformed.
+``` {r}
+model <- lm(Biomarker ~ Age + Disease.Score + Female, data=surv_data)
+summary(model)
+
+model <- lm(log(Biomarker) ~ Age + Disease.Score + Female, data=surv_data)
+summary(model)
+```
+Log-transformed one performs better, showed by larger adjusted R-squared value compared to the original model.
+
+2. Plot Kaplan‐Meier survival curves stratified by Treatment group.
+``` {r}
+library(survival)
+library(survminer)
+
+n_death <- surv_data$Event > 0
+
+survival_curve <- survfit(Surv(Time, n_death) ~ Treatment, data = surv_data)
+ggsurvplot(survival_curve, fun='event')
+```
+
+3. Is there a significant difference in survival between the two treatment groups.
+``` {r}
+wilcox.test(surv_data$Biomarker~surv_data$Female)
+print('Yes, there is a significant difference between the two treatment groups because the p-value score is more than 0.05')
+```
+
+4. Run a multivariable Cox P.H. model for how the variables Female, Age, Disease Score and Biomarker affect survival.
+``` {r}
+cox_model <- coxph(Surv(Time, n_death) ~ Female + Age + Disease.Score + Biomarker, data = surv_data)
+summary(cox_model)
+print("From the model result above, Age and Disease.Score are significant.")
+```
+
+5. Add Treatment to this model and report the hazard ratio with 95%CI comparing the invasive to less
+invasive procedure adjusted for the variables in part 4. Is it a statistically significant effect.
+``` {r}
+cox_model_w_treatment <- coxph(Surv(Time, n_death) ~ Female + Age + Disease.Score 
+                               + Biomarker + Treatment, data = surv_data)
+summary(cox_model_w_treatment)
+
+exp(cbind(cox_model_w_treatment$coef, confint(cox_model_w_treatment)))
+```
+
+6. Test the proportionality of hazards assumption for each variable in the multivariable model and
+comment.
+``` {r}
+library(survminer)
+
+test_prop <- cox.zph(cox_model_w_treatment)
+test_prop
+
+print("As seen on the table above, the variables with p-value less than 0.05 are Age, Disease Score, Treatment and Global. ")
+
+ggcoxzph(test_prop)
+```
+
+
+
+7. Plot the Schoenfeld residuals corresponding to treatment and their smoother as a function of time.
+``` {r}
+plot(test_prop, var=1)
+abline(h = coef(cox_model_w_treatment)[1], col = "green", lwd = 2)
+```
+
+8. Report the hazard ratio for treatment adjusted for sex, age, disease score and the biomarker for the following time windows, a. < 0.25 years, b. 0.25 to < 1 year and c. 1 year and above.
+``` {r}
+hist(surv_data$Time)
+
+# less than 0.25
+data_1 <- surv_data[surv_data$Time < 0.25,]
+n_death_1 <- data_1$Event > 0
+
+# 0.25 to 1 year
+data_2 <- surv_data[(surv_data$Time >= 0.25) & (surv_data$Time < 1),]
+n_death_2 <- data_2$Event > 0
+
+# more than 1 year
+data_3 <- surv_data[surv_data$Time >= 1,]
+n_death_3 <- data_3$Event > 0
+
+h_ratio_1 <- coxph(Surv(Time, n_death_1) ~ Treatment + Female + Age + 
+                     Disease.Score + Biomarker, data = data_1)
+# hazard ratio
+exp(cbind(h_ratio_1$coef, confint(h_ratio_1)))
+
+h_ratio_2 <- coxph(Surv(Time, n_death_2) ~ Treatment + Female + Age + 
+                     Disease.Score + Biomarker, data = data_2)
+exp(cbind(h_ratio_2$coef, confint(h_ratio_2)))
+
+h_ratio_3 <- coxph(Surv(Time, n_death_3) ~ Treatment + Female + Age + 
+                     Disease.Score + Biomarker, data = data_3)
+exp(cbind(h_ratio_3$coef, confint(h_ratio_3)))
+```
+
+9. a. Derive a propensity score for Treatment based on sex, age, disease score and biomarker and
+calculate IWP (inverse weighted propensities).
+``` {r}
+# propensity score
+model <- glm(Treatment ~ Female + Age + Disease.Score + Biomarker, 
+                  family=binomial, data=surv_data)
+summary(model)
+prop <- model$fit
+iwp <- ifelse(surv_data$Treatment, 1/prop, 1/(1-prop))
+```
+
+b. What covariates influence treatment selection?
+``` {r}
+print("Age and Disease Score significantly influence Treatment.")
+```
+
+c. Plot Kaplan‐Meiers for the two treatment groups weighted by IWP. 
+``` {r}
+surv_iwp <- survfit(Surv(Time, n_death) ~ Treatment, data=surv_data, weights=iwp)
+ggsurvplot(surv_iwp, fun='event')
+```
+
+d. Calculate the hazard ratio for treatment weighted by IWP.
+``` {r}
+h_ratio_iwp <- coxph(Surv(Time, n_death) ~ Treatment, weights = iwp, 
+                     data=surv_data)
+exp(cbind(h_ratio_iwp$coef, confint(h_ratio_iwp)))
+```
+
+10. Derive the doubly robust estimator of the hazard ratio for treatment by combining a multivariable Cox model with weighting by IWP.
+``` {r}
+h_ratio_all_iwp <- coxph(Surv(Time, n_death) ~ Treatment + Female + Age + 
+                           Disease.Score + Biomarker, data=surv_data)
+exp(cbind(h_ratio_all_iwp$coef, confint(h_ratio_all_iwp)))
+```

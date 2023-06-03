@@ -1,0 +1,357 @@
+---
+title: "Linear Models II"
+author: "Todd MacKenzie"
+date: "January 17, 2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Week 1 Review: Confounding Example
+```{r}
+n <- 200
+Family.Income <- rnorm(n)
+Metal.Exposure <- 0.5*Family.Income + rnorm(n)
+Hearing.Level <- 0.0*Metal.Exposure + 2.0*Family.Income + rnorm(n)
+Dataset <- data.frame(Family.Income, Metal.Exposure, Hearing.Level)
+head(Dataset)
+```
+
+```{r}
+plot(Metal.Exposure, Hearing.Level)
+
+summary(o <- lm(Hearing.Level ~ Metal.Exposure))
+abline(o)
+summary(o.adj <- lm(Hearing.Level ~ Metal.Exposure + Family.Income))
+```
+
+#Categorize family income
+```{r}
+Family.Income.cut <- factor(cut(Family.Income, c(-Inf, quantile(Family.Income, (1:2)/3), +Inf)), labels=c("Low","Med","High"))
+
+summary(o.adj.2 <- lm(Hearing.Level ~ Metal.Exposure + Family.Income.cut))
+
+plot(Metal.Exposure, Hearing.Level, col=Family.Income.cut)
+# hearing level vs metal exposure for each category of income
+abline(a=o.adj.2$coef[1], b=o.adj.2$coef[2], col=1, lty=3, lwd=2)
+abline(a=o.adj.2$coef[1] + o.adj.2$coef[3], b=o.adj.2$coef[2], col=2, lty=3, lwd=2)
+abline(a=o.adj.2$coef[1] + o.adj.2$coef[4], b=o.adj.2$coef[2], col=3, lty=3, lwd=3)
+```
+
+# Allowing a different slope for each category
+```{r}
+plot(Metal.Exposure, Hearing.Level, col=Family.Income.cut)
+abline(lm(Hearing.Level ~ Metal.Exposure, subset=Family.Income.cut=="Low"), col=1)
+abline(lm(Hearing.Level ~ Metal.Exposure, subset=Family.Income.cut=="Med"), col=2)
+abline(lm(Hearing.Level ~ Metal.Exposure, subset=Family.Income.cut=="High"), col=3)
+
+```
+
+# Example of Simpson paradox: Statistical anomaly
+```{r}
+n <- 300
+Z <- runif(n) < 0.5
+X <- rnorm(n) + ifelse(Z, 2, -2)
+Y <- ifelse(Z, 1.0*X - 3, 1.0*X+3) + runif(n)
+
+summary(o <- lm(Y ~ X))$coef
+summary(o.1 <- lm(Y ~ X, subset=Z))$coef
+summary(o.2 <- lm(Y ~ X, subset=!Z))$coef
+summary(lm(Y ~ X + Z))$coef
+
+plot(X, Y, col=ifelse(Z,2,5))
+text(mean(X[Z]), mean(Y[Z]), "M")
+text(mean(X[!Z]), mean(Y[!Z]), "M")
+abline(o)
+abline(o.1, col=2)
+abline(o.2, col=5)
+```
+
+
+# Week 1 Review: Illustration of Collinearity
+# Y is related to X1 but X2 is highly correlated with X1
+```{r}
+n <- 500
+X1 <- rnorm(n)
+# X2 below is a correlated with X1
+rho <- 0.999 # vary rho, what if it is almost one
+X2 <- rho * X1 + sqrt(1-rho^2)*rnorm(n)
+cor(X1, X2)
+plot(X1, X2)
+Y <- 1*X1 + rnorm(n) # true model
+DF <- data.frame(Y, X1, X2)
+#View(DF)
+
+summary(lm(Y ~ X1))$coef
+summary(lm(Y ~ X2))$coef
+summary(lm(Y ~ X1 + X2))$coef
+```
+
+-----------------------------------
+## Model Selection
+-----------------------------------
+
+# Simulate a dataset with 100 observations (sample size) and 25 covariates, the first 
+# 20 of which have no effect (e.g. are independent) of the dependent variable
+```{r}
+n <- 100
+n.var <- 25
+X <- matrix(nrow=n, ncol=n.var, rnorm(n*n.var))
+dimnames(X)[[2]] <- 1:n.var
+Coef <- c(rep(1,5), rep(0, n.var-5))
+Y <- X %*% Coef + rnorm(n)
+DF <- data.frame(X)
+dimnames(DF)[[2]] <- paste("Cov", 1:25, sep="")
+DF <- cbind(Y, DF)
+
+View(DF)
+```
+
+Does a linear model work?
+```{r}
+summary(o <- lm (Y ~ X, data=DF))
+```
+
+# Stepwise regression
+```{r}
+#attach(DF)
+o <- lm(Y ~ Cov1 + Cov2 + Cov3 + Cov4 + Cov5 + Cov6 + Cov7 + Cov8 + Cov9 + Cov10 + Cov11 + Cov12 + Cov13 + Cov14 + Cov15 + Cov16 + Cov17 + Cov18 + Cov19 + Cov20 + Cov21 + Cov22 + Cov23 + Cov24 + Cov25, data=DF)
+
+install.packages("StepReg")
+library(StepReg)
+?stepwise
+stepwise(y="Y", data=DF, selection="forward")
+stepwise(y="Y", data=DF, selection="backward")
+stepwise(y="Y", data=DF, selection="bidirection")
+```
+
+# LASSO for variable selection
+Step 1: Determine estimates over a range of penalties
+```{r}
+
+library(glmnet)
+o.lasso <- glmnet(X, Y, alpha=1)
+plot(o.lasso)
+```
+
+Next step: Determine the optimal penalty using 10-fold cross validation
+```{r}
+o.cv.lasso <- cv.glmnet(X, Y, alpha=1)
+# THe numbers at top on the plot below is number of non-zero coefficients
+plot(o.cv.lasso, log="y")
+#index <- ceiling(dim(X)[2]*(1:5)/5)
+#text(log(o.cv.lasso$lambda)[index], rep(max(o.cv.lasso$cvm), 5), index)
+```
+
+Use the variables selected by LASSO
+```{r}
+X.select <- X[, o.lasso$beta[, o.lasso$lambda == o.cv.lasso$lambda.min] != 0]
+
+# Multivariable model using the variables selected by LASSO
+summary(lm(Y ~ X.select))
+
+
+```
+
+
+
+----------------------------------------------------------
+# Effect Modification / Interactions
+```{r}
+n <- 500
+X <- rnorm(n) # The exposure of interest
+Modifier <- runif(n)<0.5 # Dichotomous effect modifier
+Y <- ifelse(Modifier, 2, 0.5)*X + rnorm(n) 
+plot(X, Y, col=ifelse(Modifier, 2, 5))
+
+summary(lm(Y ~ X))$coef
+
+# Incorporate an interaction
+summary(o<-lm(Y ~ X*Modifier))$coef
+abline(a=o$coef[1],b=o$coef[2], col=5)
+abline(a=o$coef[1]+o$coef[3],b=o$coef[2]+o$coef[4], col=2)
+
+# A way to code to get the separate treatment effects
+X.0 <- X*ifelse(!Modifier, 1, 0)
+X.1 <- X*ifelse(Modifier, 1, 0)
+summary(lm(Y ~ X.0 + X.1))$coef
+
+# Or Use Subset Analysis
+summary(lm(Y ~ X, subset=!Modifier))$coef
+summary(lm(Y ~ X, subset=Modifier))$coef
+```
+
+
+
+------------------------------------------------------------------
+# Nonlinearity and Smoothing
+Simulate some non-linear data
+Plot relationship
+```{r}
+n <- 500
+X <- rnorm(n) 
+Y <- exp(X) + rnorm(n) # X has a non-linear effect
+plot(X, Y, xlim=quantile(X, c(0.01,0.99)), ylim=quantile(Y, c(0.01,0.99)))
+```
+
+Quadratic model, cubic model
+```{r}
+X.2 <- X^2
+summary(o2 <- lm(Y ~ X + X.2))
+points(X, o2$fit, col=2, cex=0.5)
+
+X.3 <- X^3
+summary(o3 <- lm(Y ~ X + X.2 + X.3))
+points(X, o3$fit, col=3, cex=0.5)
+```
+Also see poly() function
+
+LOESS (LOWESS): locally weighted error sum of squares regression
+```{r}
+(o.l <- loess(Y ~ X)) # Comment on choice of hyperparameters
+points(X, o.l$fitted, col=5)
+```
+Smoothing splines
+```{r}
+(o.sm <- smooth.spline(X, Y)) # penalty parameter
+lines(o.sm, col=3)
+```
+
+See GAM library (Generalized Additive Models)
+
+
+---------------------------------------------------------------------
+# Sensitivity of Applying a Linear Model to the range of the exposure
+The effect of a unit change in age depends on the age if the true model is nonlinear
+```{r}
+n <- 500
+Age <- 100 * runif(n) 
+Y <- exp(0.03*Age) + rnorm(n) # X has a non-linear effect
+plot(Age, Y)
+
+summary(o1 <- lm(Y ~ Age, subset=Age<20))$coef
+summary(o2 <- lm(Y ~ Age, subset=Age>=20 & Age < 40))$coef
+summary(o3 <- lm(Y ~ Age, subset=Age>=40))$coef
+abline(o1)
+abline(o2)
+abline(o3)
+abline(v=20)
+abline(v=40)
+```
+
+
+--------------------------------------------------------------------
+# Transformations of the Endpoint
+
+Simulate some data
+```{r}
+N <- 200
+X1 <- rnorm(N)
+X2 <- rnorm(N)
+Y <- exp(1*X1 - 0.5*X2 + rnorm(N))
+```
+
+Visualize the data
+```{r}
+panel.cor <- function(x, y){
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- round(cor(x, y), digits=2)
+  txt <- paste0("R = ", r)
+  cex.cor <- 1.5
+  text(0.5, 0.5, txt, cex = cex.cor)
+}
+# Customize upper panel
+upper.panel<-function(x, y){
+  points(x,y, pch = 19)
+}
+
+
+DF <- cbind(Y, X1, X2)
+pairs(DF, lower.panel=panel.cor)
+
+summary(lm(Y ~ X1 + X2))
+```
+
+# Log transform - interpret the coefficients as # change
+```{r}
+log.Y <- log(Y)
+summary(lm(log.Y ~ X1 + X2))
+```
+
+
+
+# FEV Example to illustrate Model Selection, Effect Modification, and Non-linearity
+
+```{r}
+
+FEV.Data <- read.delim("http://jse.amstat.org/datasets/fev.dat.txt", sep="", header=FALSE)
+names(FEV.Data) <- c("Age","FEV","Height","Male","Smoker")
+
+dim(FEV.Data)
+
+summary(FEV.Data$FEV)
+hist(FEV.Data$FEV, breaks=20)
+pairs(FEV.Data)
+
+round(summary(lm(FEV ~ Age, data=FEV.Data))$coef[2,],4)
+round(summary(lm(FEV ~ Height, data=FEV.Data))$coef[2,],4)
+summary(lm(FEV ~ Male, data=FEV.Data))$coef[2,]
+summary(lm(FEV ~ Smoker, data=FEV.Data))$coef[2,]
+
+summary(o.all <- lm(FEV ~ Age + Height + Male + Smoker, data=FEV.Data))
+
+plot(o.all)
+```
+
+# Transformation of FEV
+```{r}
+FEV.Data$log.FEV <- FEV.Data$log(FEV)
+hist(Fev.Data$log.FEV)
+
+summary(o.all.log <- lm(log.FEV ~ Age + Height + Male + Smoker, data=FEV.Data))
+
+plot(o.all.log)
+
+
+```
+
+
+
+
+
+## Instrumental Variables to Counter Confounding
+```{r}
+n <- 10000
+IV <- runif(n) < 0.5
+Z <- runif(n) < 0.5
+X <- ifelse(IV, runif(n) < 0.7 + 0.2*Z, runif(n) < 0.3 + 0.2*Z)
+tapply(X, IV, mean)
+tapply(X, Z, mean)
+Y <- 0.0*X + 2.0*Z + rnorm(n)
+
+summary(lm(Y ~ X))
+cov(Y, IV) / cov(X, IV)
+```
+
+# Measurement Error
+```{r}
+n <- 1000
+X <- rnorm(n)
+Y <- 1*X + rnorm(n)
+# X1 and X2 are X measured with error
+X1 <- X + 0.5*rnorm(n)
+X2 <- X + 0.5*rnorm(n)
+
+summary(lm(Y ~ X))$coef
+summary(lm(Y ~ X1))$coef
+summary(lm(Y ~ X2))$coef
+midX <- (X1+X2)/2
+summary(lm(Y ~ midX))$coef
+```
+
+
+

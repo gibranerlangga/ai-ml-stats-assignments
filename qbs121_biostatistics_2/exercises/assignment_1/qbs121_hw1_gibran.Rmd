@@ -1,0 +1,189 @@
+---
+title: "qbs121_hw1_gibran"
+author: "Gibran Erlangga"
+date: "1/11/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Homework 1 - Linear Models
+
+## Question 1 (bonus)
+a. Show that the sample mean $\sum_{i=1}^n x_i/n$ minimizes the average squared distance, $\sum (x_i - \mu)^2$. 
+
+Let's say we have $s(a) = \sum_{i=1}^{n} (x_i - a)^2$
+
+\begin{align*}
+\sum_{i=1}^{n} (x_i - a)^2 &= \sum_{i=1}^{n} (x_i^2 - 2x_ia + a^2) \\
+&= \sum_{i=1}^{n} x_i^2 + 2a \sum_{i=1}^{n} x_i + na^2 \\
+\end{align*}
+
+To minimize s(a), take first derivative. We get $s'(a) = -2 \sum_{i=1}^{n} x_i + 2na$, which will be zero when $\sum_{i=1}^n x_i/n$.
+
+b. Show that the median minimizes the average distance, $\sum |x_i - \mu|$
+
+Assuming that the set S has n elements and $s_{1}$ < $s_{2}$ < ... < $s_{n}$. If x < $s_{1}$, it becomes
+
+\begin{align*}
+f(x) &= \sum_{s \in S} |s-x| \\
+&= \sum_{s \in S} (s-x) \\
+&= \sum_{k=1}^{n} (s_{k}-x) \\
+\end{align*}
+
+Suppose that $S_{k} \le x \le x + d \le s_{k+1}$. Then,
+
+\begin{align*}
+f(x+d) &= \sum_{i=1}^{k} (x+d-s_{i}) + \sum_{i=1}^{n} (s_{i} - (x+d)) \\
+&= dk + \sum_{i=1}^{k} (x-s{i})-d(n-k) + \sum_{i=k+1}^{n} (s+{i}-x) \\
+&= d(2k-n) + \sum_{i=1}^{k} (x-s{i}) + \sum_{i=k+1}^{n} (s+{i}-x) \\
+&= d(2k-n) + f(x) \\
+f(x+d) - f(x) &= d(2k-n)
+\end{align*}
+
+So, $f(x)$ will be negative if $2k < n$, 0 if $2k = n$ and $2k > n$. Therefore, $f(x)$ is minimal when $x$ is the median of $S$.
+
+## Question 4 (bonus)
+Given a dependent variable $Y$ and features $X_1,\ldots,X_k$ find the linear combination of the features that maximizes the correlation with $Y$.
+
+Canonical Correlation analysis
+
+## Question 5 (bonus)
+How does $R^2$ change if (a) the dependent variable $Y$ is rescaled, or (b) a new predictor $X_3=aX_1+bX_2$ is added to the linear model $Y=\beta_0 + \beta_1 X_2 + \beta_2 X_2 + \epsilon$. 
+
+
+
+## 2.2 
+``` {r}
+data <- stackloss
+head(data, 2)
+```
+
+### 1.Comment on the distribution of stack.loss. 
+``` {r}
+hist(data$stack.loss)
+```
+
+The distribution is skewed to the right, where the majority of values get together on the left and long tail to the right.
+
+### 2. Regress yield on Air.Flow, Water.Temp and Acid.Conc., one at a time (univariable models). 
+
+``` {r}
+summary(lm(stack.loss ~ Air.Flow, data))
+
+summary(lm(stack.loss ~ Water.Temp, data))
+
+summary(lm(stack.loss ~ Acid.Conc., data))
+```
+
+### 3. Calculate a Pearson correlation of Air.Flow with stackloss and compare this result to the univariable regression of stackloss on Air.Flow above.
+``` {r}
+cor(data$Air.Flow, data$stack.loss, method = c("pearson"))
+```
+
+### 4. Run a multivariable model of stackloss on all three variables. Interpret the coefficients.
+``` {r}
+lm_all <- lm(stack.loss ~ Air.Flow + Water.Temp + Acid.Conc., data)
+summary(lm_all)
+```
+
+Intercept: -39.9197, when other variables equal to 0, then the estimated value of stack.loss is the intercept.
+
+slope for Air.Flow: 0.71 -> for every unit increase in Air.Flow, there is a 0.71 increase in the value of stack.loss.
+
+slope for Water.Temp: 1.2953 -> for every unit increase in Water.Temp, there is a 1.2953 increase in the value of stack.loss.
+
+slope for Acid.Conc.: -0.1521 -> for every unit increase in Acid.Conc., there is a 0.1521 decrease in the value of stack.loss.
+
+### 5. This part illustrates the explicit formula for least squares estimation.
+#### a. Create the "design matrix" or "model matrix" corresponding to the main effects for Air.Flow, Water.Temp and Acid.Conc. e.g X <- cbind(1, Air.Flow,Water.Temp,Acid.Conc)
+``` {r}
+design_matrix <- model.matrix(~Air.Flow + Water.Temp + Acid.Conc., data)
+design_matrix
+```
+
+#### b. Calculate pred <- X \%*\% solve(t(X) \%*\% X) \%*\% t(X) \%* \% yield
+``` {r}
+pred <- design_matrix %*% solve(t(design_matrix) %*% design_matrix) %*% t(design_matrix) %*% stack.loss
+pred
+```
+
+#### c. Compare pred with the predicted values when you run lm(yield ~ Air.Flow + Water.Temp + Acid.Conc)
+``` {r}
+# compare pred vs lm_all prediction
+stackloss_pred <- predict.lm(lm_all, data[c("Air.Flow", "Water.Temp", "Acid.Conc.")])
+
+plot(pred, stackloss_pred)
+```
+
+## 4. Simulations
+### Question 1
+#### a. Simulate two variables, $X_1$ and $X_2$, whose joint distribution is the bivariate normal with means of 1 and 2 respectively, standard deviations of 3 and 4, respectively and correlation of 0.5. Use a sample size of 500. 
+``` {r}
+#reference: https://blog.revolutionanalytics.com/2016/08/simulating-form-the-bivariate-normal-distribution-in-r-1.html
+library(MASS)
+
+n <- 500
+mean <- c(1, 2)
+std <- c(3, 4)
+rho <- 0.5
+cov <- matrix(c(std[1]^2, std[1]*std[2]*rho, std[1]*std[2]*rho, std[2]^2), ncol=2)
+
+data <- mvrnorm(n=n, mu = mean, Sigma = cov)
+x1 <- data[,1]
+x2 <- data[,2]
+```
+
+#### b. Calculate the Pearson correlation of the two simulated variables. 
+
+``` {r}
+cor(x1, x2, method = "pearson")
+```
+
+#### c. Calculate the $R^2$ when $X_2$ is regressed on $X_1$. 
+
+``` {r}
+model1 <- lm(x1 ~ x2)
+summary(model1)
+```
+
+#### d. Calculate the $R^2$ when $X_1$ is regressed on $X_2$. 
+
+``` {r}
+model2 <- lm(x2 ~ x1)
+summary(model2)
+```
+
+#### e. Comment on the values reported for parts b,c and d.  \
+
+Correlation score explains the strength of a relationship between two variables (dependent and independent variable, in this case), while R^2 explains to what extent the variance of one variable explains the variance of another variable. The pearson correlation score for x1 and x2 is 0.53, while the R^2 of model 1 ($X_2$ is regressed on $X_1$) is 0.2772, which happened to be also the value for R^2 of model 2 ($X_1$ is regressed on $X_2$). For both model 1 and model 2, it explains ~28% variation of the dependent variable.
+
+
+#### 4. The uniform distribution is symmetric but not bell-shaped. Generate 5 random variables, $X_1,X_2,\ldots,X_5$, that are uniformly distributed (U[0,1]) and independent. Created histograms of $X_1, X_1+X_2, \ldots, X_1+\cdots+X_5$ . Comment on the shape as you add more of these random variables together.
+
+``` {r}
+n = 1000
+
+x1 <- runif(n)
+x2 <- runif(n)
+x3 <- runif(n)
+x4 <- runif(n)
+x5 <- runif(n)
+
+sum1 <- x1
+sum2 <- x1 + x2
+sum3 <- x1 + x2 + x3
+sum4 <- x1 + x2 + x3 + x4
+sum5 <- x1 + x2 + x3 + x4 + x5
+
+par(mfrow=c(2, 3))
+hist(sum1, main="x1 only", xlab="total")
+hist(sum2, main="x1 + x2", xlab="total")
+hist(sum3, main="x1 + x2 + x3", xlab="total")
+hist(sum4, main="x1 + x2 + x3 + x4", xlab="total")
+hist(sum5, main="x1 + x2 + x3 + x4 + x5", xlab="total")
+```
+
+From the graphs above we can observe that as we combine more data points into one value, the distribution of the summation tends to form a normal distribution, although the individual distribution is a uniform distribution and not a normal one.

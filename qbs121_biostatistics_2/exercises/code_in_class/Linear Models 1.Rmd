@@ -1,0 +1,451 @@
+---
+title: "Linear Models Part I"
+---
+
+## R Markdown
+
+See <http://rmarkdown.rstudio.com>.
+
+# 1-Sample Paired t-test; simulated data
+In the first case the mean is zero
+In the second case the mean is not zero
+```{r}
+Y <- rnorm(100)
+summary(Y)
+hist(Y, breaks=10)
+t.test(Y)
+
+Y <- 0.25 + rnorm(100)
+summary(Y)
+hist(Y, breaks=10)
+t.test(Y)
+
+```
+
+# Mean is a least squares estimator
+```{r}
+Y <- -log(runif(n=100)) # exponential distribution, rexp(n=100)
+sum.squares <- function(point) {
+  sum((Y - point)^2)
+}
+points <- seq(from=range(Y)[1], to = range(Y)[2], length=200)
+
+plot(points, sapply(points, sum.squares), type="l")
+abline(v=mean(Y), col=2)                               
+abline(v=median(Y), col=3) 
+```
+
+# Median minimizes sum of least absolute value
+```{r}
+Y <- -log(runif(n=100))
+sum.absolute <- function(point) {
+  sum(abs(Y - point))
+}
+points <- seq(from=range(Y)[1], to = range(Y)[2], length=200)
+
+plot(points, sapply(points, sum.absolute), type="l")
+abline(v=mean(Y), col=2)
+abline(v=median(Y), col=3) 
+```
+
+
+
+# Comparing a Proportion to Hypothezied Value. e.g. 50%; simulated data
+```{r}
+N <- 100
+Y <- runif(N) < 0.5
+table(Y)
+mean(Y)
+sY <- sum(Y)
+(P.value <- 2*pbinom(ifelse(sY<N/2,sY,N-sY), size=N, prob=0.5)) # exact
+
+t.test(Y-0.5) # approximation
+
+```
+
+
+# McNemar's Test
+Example: Comparing two classifiers
+        Machine Learner 2
+ML 1   Correct   Wrong
+Correct   317      23
+Wrong     12       91
+```{r}
+
+c(d01 <- 23, d10 <- 12)
+2*pbinom(min(d01, d10), size=d01+d10, prob=0.5)
+TS <- (d01 - d10)^2/(d01+d10)
+1 - pchisq(TS, df=1)
+
+```
+
+
+# Ask students to change the coefficients and run
+# Change the error distribution and run
+# Outlier in a linear model
+```{r}
+n <- 1000
+X <- rnorm(n)
+Y <- -5 +  0.5 * X + 3*rnorm(n)
+
+plot(X, Y)
+o <- lm(Y ~ X)
+summary(o)
+abline(o, col=2)
+```
+# Add an outlier
+# Default plots from linear model output
+```{r}
+X <- c(X, 5)
+Y <- c(Y, -50)
+plot(X, Y)
+
+```
+
+# Quantile Regression by Least Absolute Deviations
+```{r}
+library(quantreg)
+(os.lad <- summary(rq(Y ~ X)))
+```
+
+# Multivariable example
+```{r}
+N <- 500
+X1 <- rnorm(N)
+X2 <- rnorm(N)
+
+Y <- 1 - 2*X1 +3*X2 + rexp(N) # this is the true causal model
+
+(os.ls <- summary(lm(Y ~ X1+X2)))
+
+(os.lad <- summary(rq(Y ~ X1+X2)))
+```
+
+# Application of multivariable linear model; simulated data, try different coefficients in the simulation
+```{r}
+n <- 100
+Age <- 20 + 60*runif(n)
+Female <- runif(n) < 0.5
+Biomarker <- 10 +  1 * Age + 10 * Female + 20 * rnorm(n) 
+# Slopes of 1 and 2, intercept of 10, normal error with stdev of 20
+
+View(cbind(Biomarker, Age, Female))
+```
+
+```{r}
+par(mfrow=c(1,2))
+plot(Age, Biomarker)
+plot(factor(Female), Biomarker)
+
+(o <- lm(Biomarker ~ Age))
+summary(o)
+
+summary(lm(Biomarker ~ Female))
+
+(os <- summary(lm(Biomarker ~ Age + Female)))
+
+par(mfrow=c(1,1))
+plot(Age, Biomarker, col=ifelse(Female, 2,3))
+abline(lm(Biomarker ~ Age))
+  
+```
+
+
+# Read in the dataset and show some details; make sure you have the correct path
+# This is data from a study evaluating the association (or effect) of a glucose lowering treatment in individuals with diabetes
+# HbA1c is a measure of glucose levels
+# GlucoseTreatment is TRUE if the treatment recieved, FALSE otherwise
+
+```{r}
+DM <- read.delim("DiabetesTreatment.txt")
+
+dim(DM)
+names(DM)
+
+attach(DM)
+
+table(GlucoseTreatment)
+```
+
+# Central tendency and one-sample t-test
+# What is the average change in HbA1c in those who were treated
+```{r}
+HbA1c.Change <- HbA1c.Followup - HbA1c.Baseline
+
+summary(HbA1c.Change[GlucoseTreatment])
+hist(HbA1c.Change[GlucoseTreatment])
+
+t.test(HbA1c.Change[GlucoseTreatment])
+```
+
+# How the average change in treated subjects compare to the average change in untreated subjects
+```{r}
+tapply(HbA1c.Change, GlucoseTreatment, summary)
+
+boxplot(HbA1c.Change ~ GlucoseTreatment)
+
+t.test(HbA1c.Change ~ GlucoseTreatment)
+
+```
+
+# Regression on 1 variable
+```{r}
+plot(HbA1c.Baseline, HbA1c.Followup)
+
+cor.test(HbA1c.Baseline, HbA1c.Followup)
+
+summary(lm(HbA1c.Followup ~ HbA1c.Baseline))
+```
+
+# Multivariable models for how HbA1c at follow-up depends on baseline characteristics
+```{r}
+summary(lm(HbA1c.Followup ~ HbA1c.Baseline + Female))
+
+summary(lm(HbA1c.Followup ~ HbA1c.Baseline + Female + Age + BMI + SBP))
+
+```
+
+# Categorical variables
+```{r}
+BMI.Category <- cut(BMI, c(0,30,35,Inf), right=FALSE)
+
+summary(o <- lm(HbA1c.Followup ~ HbA1c.Baseline + Female + Age + BMI.Category + SBP))
+
+anova(o)    
+```
+
+
+# Collinearity
+```{r}
+summary(lm(HbA1c.Followup ~ BMI))$coef
+
+summary(lm(HbA1c.Followup ~ HbA1c.Baseline + BMI))$coef
+
+summary(lm(HbA1c.Followup ~ BMI.Category))$coef
+summary(lm(HbA1c.Followup ~ BMI + BMI.Category))$coef
+
+```
+
+# Confounding of Glucose Treatment on HbA1c
+a. HbA1c at baseline affects treatment choice; patients with worse glucose treatment more likely to recieve treatment
+b. HbA1c at baseline is correlated with HbA1c at follow-up  
+```{r}
+t.test(HbA1c.Baseline ~ GlucoseTreatment)
+
+cor.test(HbA1c.Baseline, HbA1c.Followup)
+```
+
+# Solution to confounding; adjust for the confounder
+```{r}
+summary(lm(HbA1c.Followup ~ GlucoseTreatment + HbA1c.Baseline))$coef
+
+summary(lm(HbA1c.Change ~ GlucoseTreatment + HbA1c.Baseline))$coef
+
+
+```
+
+# Throw in other covariates;
+# Pro's: They may be confounders, it increases precision a little if they explain variation in the dependent variable
+# Con's: may be too high a ratio of model variables to sample size (don't go over 1:5 or 1:10)
+```{r}
+summary(lm(HbA1c.Followup ~ GlucoseTreatment + HbA1c.Baseline + Female + Age + BMI + SBP))$coef
+
+summary(lm(HbA1c.Change ~ GlucoseTreatment + HbA1c.Baseline + Female + Age + BMI + SBP))$coef
+
+```
+
+# Does Sex modify the association of Hb1Ac at follow-up with treatment ?
+# Test using an interaction
+```{r}
+summary(lm(HbA1c.Followup ~ GlucoseTreatment*Sex + HbA1c.Baseline))$coef
+```
+
+
+# Test if the effect of HbA1c at baseline on HbA1c at follow-up goes beyond a linear effect
+```{r}
+summary(lm(HbA1c.Followup ~ poly(HbA1c.Baseline,2))$coef
+        
+summary(o <- lm(HbA1c.Followup ~ poly(HbA1c.Baseline,2) + Female + Age + SBP + BMI)$coef
+     
+```
+
+
+# Lack of Independence between Records
+```{r}
+N <- 100
+X <- rnorm(N)
+c(a<-0, b<-1)
+Noise <- rnorm(N)
+Y <- a + b*X + Noise
+summary(lm(Y ~ X))
+DF <- data.frame(Y, X)
+DF2 <- rbind(DF, DF)
+summary(lm(Y ~ X, data=DF2))
+DF4 <- rbind(DF2, DF2)
+summary(lm(Y ~ X, data=DF4))
+DF16 <- rbind(DF4, DF4, DF4, DF4)
+summary(lm(Y ~ X, data=DF16))
+```
+
+
+# Importance of Normality
+If the underlying error term has a normal distribution the coefficients have a t distribution
+But if the sample size is large enough the distribution is normal even if the true error term is not (e.g. highly skewed)
+```{r}
+
+Dist.Estimated.Coef <- function(N=5, coef=c(0,1), dist=rnorm, R=1000) {
+  Est.Coefs <- T.Values <- matrix(nrow=R, ncol=2)
+  for (r in 1:R) {
+    X <- rnorm(N)
+    Y <- coef[1] + X * coef[2] + dist(N)
+    o <- lm(Y ~ X)
+    Est.Coefs[r,] <- o$coefficients
+    #T.Values[r,] <- summary(o)$coef[, 3]
+  }
+qqplot(Est.Coefs[,2], qt((1:R)/(R+1), df=N-2))
+} 
+
+Dist.Estimated.Coef()
+Dist.Estimated.Coef(dist=rexp)
+
+```
+
+
+# Heteroscedasticity: standard deviation depends on a regressor
+```{r}
+R <- 1000
+N <- 300
+c(a <- 0, b<- 1)
+Covered <- rep(NA, R)
+for (r in 1:R) {
+  X <- runif(N)
+  Error <- X * rnorm(N)
+  Y <- a + b*X + Error
+  os <- summary(lm(Y~X))
+  Covered[r] <- os$coef[2,1]-1.96*os$coef[2,2] < b & b < os$coef[2,1]+1.96*os$coef[2,2]
+  }
+par(mfrow=c(1,1))
+plot(X, Y)
+mean(Covered)
+```
+
+
+
+
+# Categorical variables
+```{r}
+Race <- cut(runif(n), c(0,0.5,0.7,0.9, 1)) # Z is a categorical variable
+Race <- factor(Race, labels=1:4)
+table(Race)
+View(cbind(Biomarker, Age, Female, Race))
+
+summary(o <- lm(Biomarker ~ Age + Female + Race))
+
+```
+
+
+# Testing if categorical variable is significant
+```{r}
+anova(o)
+
+# OR
+
+test.stat <- coef(o)[4:6] %*% solve(vcov(o)[4:6,4:6]) %*% coef(o)[4:6]
+
+1 - pf(test.stat, df1=3, df2=o$df.residual)
+```
+
+# Contrasts: e.g., Race 2 vs Race 3
+```{r}
+nms <- c("Race2","Race3")
+( diff.2.vs.3 <-  c(1,-1) %*% o$coefficients[nms] )
+( var.diff.2.vs.3 <- c(1,-1) %*% vcov(o)[nms, nms] %*% c(1,-1) )
+1 - pf(diff.2.vs.3^2 / var.diff.2.vs.3, 1, o$df.residual)
+```
+
+# Or use the relevel command
+```{r}
+Race <- relevel(Race, "2")
+summary(lm(Biomarker ~ Age + Female + Race))$coef
+
+```
+
+# Identify te Predictive ability, R^2 and Mean Square Error of a model
+# What is adjusted R^2 
+```{r}
+summary(o)
+```
+
+# Collinearity: Perfect
+```{r}
+AgeMonths <- 12 * Age
+summary(lm(Biomarker ~ Age + Female + Race + AgeMonths))
+```
+# Collinearity: Perfect
+```{r}
+AgeMonths <- round(12 * Age)
+summary(lm(Biomarker ~ Age + Female + Race + AgeMonths))
+```
+
+# Weighting
+```{r}
+Weight <- rexp(n)
+summary(lm(Biomarker ~ Age + Female + Race + AgeMonths, weight=Weight))
+```
+
+# It is matter of variation between clusters in both error and exposure
+```{r}
+Clustering.Sim <- function(ICC=1, Crossed=0, a=0, b=1, n.clu=100, n.per.clu=5, R=10000) {
+  if (ICC < 0 | ICC > 1) stop("ICC between 0 and 1")
+  if (Crossed < 0 | Crossed > 1) stop("Crossed between 0 and 1")
+  est <- se <- rep(NA, R)
+  N <- n.clu*n.per.clu
+  for (r in 1:R) {
+    Cluster <- as.factor(rep(1:n.per.clu, each=n.clu))
+    Noise.Cluster <- rep(rnorm(n.clu), each=n.per.clu)
+    Noise.Subject <- rnorm(N)
+    X.Nested <- rep(rnorm(n.clu), each=n.per.clu)
+    X.Crossed <- rnorm(N)
+    X <- Crossed*X.Crossed + sqrt(1-Crossed^2)*X.Nested
+    Y <- a + b*X + sqrt(ICC)*Noise.Cluster + sqrt(1-ICC^2)*Noise.Subject
+    os <- summary(lm(Y ~ X))
+    est[r] <- os$coef[2,1]
+    se[ r ] <- os$coef[2,2]
+    }
+  qt.975 <- qt(0.975, df=N-2)
+  qt.025 <- qt(0.025 ,df=N-2)
+  Bias <- mean(est) - b
+  Coverage <- mean(est + qt.025 * se < b & b < est + qt.975 * se)
+  list(Bias=Bias, Coverage=Coverage )
+  }
+
+Clustering.Sim(ICC=0.05, Crossed=0.05, a=0, b=1, n.clu=100, n.per.clu=10, R=1000)
+Clustering.Sim(ICC=0.05, Crossed=0.95, a=0, b=1, n.clu=100, n.per.clu=10, R=1000)
+Clustering.Sim(ICC=0.95, Crossed=0.05, a=0, b=1, n.clu=100, n.per.clu=10, R=1000)
+Clustering.Sim(ICC=0.95, Crossed=0.95, a=0, b=1, n.clu=100, n.per.clu=10, R=1000)
+```
+
+
+
+# Non Linear Functional Forms
+```{r}
+N <- 500
+X <- 5*rexp(N)
+Y <- 2*log(X) + rnorm(N) # Choose some domain for X and function on that domain
+par(mfrow=c(1,1))
+plot(X, Y, pch=".")
+o<-lm(Y ~ X)
+abline(o$coef, col=2)
+
+o.l <- loess(Y ~ X)
+lines(sort(o.l$x), o.l$fit[order(o.l$x)], col=5)
+
+X2 <- X^2
+o.2<-lm(Y ~ X+X2)
+lines(sort(X), o.2$fit[order(X)], col=3)
+
+X3 <- X^3
+o.3 <-lm(Y ~ X+X2+X3)
+lines(sort(X), o.3$fit[order(X)], col=4)
+```
+

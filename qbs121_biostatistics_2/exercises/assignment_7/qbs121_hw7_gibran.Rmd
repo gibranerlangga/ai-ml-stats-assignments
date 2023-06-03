@@ -1,0 +1,192 @@
+---
+title: "qbs121_hw7_gibran"
+author: "Gibran Erlangga"
+date: "2/28/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data Analyses
+## 2.1 PBC (50 points)
+Use the dataset pbc that comes with the library survival in R. The time and status indicators compose the endpoint.
+``` {r}
+library(survival)
+head(pbc)
+```
+
+1. Competing Risks: The variable status has 3 levels, 0 for censoring, 1 for transplant, 2 for death.
+(a) (2pts) If someone had a transplant and died sometime later what would this data record? 
+
+The status should show 2 for someone who had transplant and died when the study is running.
+
+(b) Download the library, cmprsk
+``` {r}
+library(cmprsk)
+```
+
+(c) (3) Run the command to get “cumuative incidence” o=with(pbc, cuminc(time,status))
+``` {r}
+o <- with(pbc, cuminc(time, status))
+o
+```
+
+(d) (5) Plot the output, plot(o), and interpret the resulting curves
+``` {r}
+plot(o)
+```
+
+2. (2) What proportion of patients are censored?
+``` {r}
+library(tidyverse)
+
+pbc %>%
+group_by(pbc$status == 0) %>%
+summarise(n=n()) %>%
+mutate(freq = n/sum(n))
+```
+
+3. (3) What is the total follow-up time in this study?
+``` {r}
+sum(pbc$time)
+```
+
+4. (5) Calculate the incidence rate of transplant and death (e.g. number of events divided by total follow-up time)
+``` {r}
+sum(pbc$status == 1)/sum(pbc$time)
+```
+5. Evaluate if trt arm impacts the composite endpoint, transplant or death by
+
+(a) (2) first coding the composite endpoint, tr.death=status> 0
+``` {r}
+tr.death <- pbc$status > 0
+```
+
+(b) (3) reporting the number of events and rate in each arm
+``` {r}
+tapply(tr.death, pbc$trt, sum)
+```
+
+(c) (5) plotting survival curves and reporting median time to transplant or death in each treatment group
+``` {r}
+plot(survfit(Surv(time/3625.5, tr.death) ~ trt, data = pbc),
+     fun = "event", 
+     col=7:8,
+     xlab="Years")
+
+legend(1,0.7,
+       text.col=7:8,
+       legend=c("Drug","Placebo"))
+```
+(d) (5) conducting a log-rank test
+``` {r}
+survdiff(Surv(time, tr.death) ~ trt, data = pbc)
+```
+(e) (5) conducting a Peto-Peto-Prentice test (generalization of the Wilcoxon rank test)
+``` {r}
+survdiff(Surv(time, tr.death) ~ trt, rho=1, data=pbc)
+```
+(f) (5) using a Weibull proportional hazards model model to estimate the hazard ratio with a 95%CI
+``` {r}
+summary(survreg(Surv(time, tr.death) ~ trt, dist="weibull",data=pbc))
+```
+(g) (5) using a Cox’s proportional hazards model to estimate the hazard ratio with a 95%CI
+``` {r}
+summary(coxph(Surv(time, tr.death) ~ trt, data = pbc))
+```
+
+## 2.2 Lung
+Use the dataset lung that comes with the library survival in R. The time and status indicators compose the endpoint.
+
+1. (2pts) What are the levels of the status variable?
+``` {r}
+unique(lung$status)
+```
+1=censored, 2=dead
+
+2. (2) What proportion of patients are censored?
+``` {r}
+perct_censored <- lung %>%
+group_by(lung$status == 1) %>%
+summarise(n=n()) %>%
+mutate(freq = n/sum(n))
+
+as.numeric(perct_censored[2,3]*100)
+```
+
+3. (3) What is the total follow-up time in this study?
+``` {r}
+sum(lung$time)
+```
+
+4. (3) Calculate the mortality rate (e.g. number of deaths divided by total follow-up time)
+``` {r}
+sum(lung$status == 2) / sum(lung$time)
+```
+
+5. Examine the association of biological sex with survival as follows
+(a) (3) plotting male and female survival curves
+``` {r}
+surv_gender <- survfit(Surv(time, status) ~ sex, data = lung)
+plot(surv_gender)
+```
+
+(b) (3) reporting median survival time for each biological sex
+``` {r}
+male <- lung %>%
+filter(lung$sex == 1) #male
+
+female <- lung %>%
+filter(lung$sex == 2) #female
+
+print(median(male$time))
+print(median(female$time))
+```
+
+(c) (3) conducting a log-rank test
+``` {r}
+survdiff(Surv(time, status) ~ sex, data = lung)
+```
+
+(d) (3) conducting a Peto-Peto-Prentice test (generalization of the Wilcoxon rank test)
+``` {r}
+survdiff(Surv(time, status) ~ sex, rho=1, data = lung)
+```
+
+(e) (5) using a Weibull proportional hazards model model to estimate the hazard ratio with a 95% CI
+``` {r}
+summary(survreg(Surv(time, status) ~ sex, dist="weibull", data = lung))
+```
+
+(f) (5) using a Cox’s proportional hazards model to estimate the hazard ratio with a 95% CI
+``` {r}
+summary(coxph(Surv(time, status) ~ sex, data = lung))
+```
+
+6. (2) Combine categories 2 and 3 in variable ph.ecog and report survival curves by this new variable
+``` {r}
+lung$ph.ecog.females <- factor(ifelse(lung$ph.ecog >2, 2, lung$ph.ecog))
+surv <- survfit(coxph(Surv(time, status) ~ ph.ecog.females, data = lung))
+
+plot(surv)
+```
+
+7. (3) Calculate the hazard ratios comparing each level to patients in category 1.
+``` {r}
+lung$ph.ecog.females <- relevel(lung$ph.ecog.females,ref="1")
+hr <- coxph(Surv(time, status) ~ ph.ecog.females,data = lung)
+exp(cbind(hr$coef,confint(hr)))
+```
+
+8. (3) Calculate the hazard ratio for a 1 unit change in this variable (e.g. going from 1 to 2 or 2 to 3).
+``` {r}
+hra <- coxph(Surv(time,status) ~ ph.ecog, data=lung)
+exp(cbind(hra$coef,confint(hra)))
+```
+
+9. (10) Examine the association of the variables age, ph.karno, pat.karno, meal.cal and wt.loss with survival using univariable Cox models and comment on the significance of the association with each.
+``` {r}
+summary(oslog1 <- survreg(Surv(time, status) ~ age, dist="lognormal", data = lung))
+```

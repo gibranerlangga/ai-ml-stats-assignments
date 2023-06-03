@@ -1,0 +1,208 @@
+---
+title: "QBS121_FINAL_PROJECT"
+author: "Group 3 (Ayush Chakraborty, Gibran Erlangga, Hyunjoe Yoo, Parinitha Kompala, Shrey Khetrapal)"
+date: "2/26/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+
+#reading the dataset
+insurance<-read.csv("insurance.csv")
+head(insurance)
+```
+
+```{r}
+#looking into the variables
+str(insurance)
+
+#converting the str into factor types
+insurance$smoker<-as.factor(insurance$smoker)
+insurance$sex<-as.factor(insurance$sex)
+insurance$region<-as.factor(insurance$region)
+Data <- insurance
+```
+
+```{r}
+#checking for missingness in the dataset.
+library(visdat)
+
+Data %>% 
+  visdat::vis_miss()
+```
+
+```{r}
+#we are plotting the dependent variable 
+#from this we can concluse that it is not normally distributed
+Data %>% 
+  as_tibble() %>% 
+  select(region, charges) %>% 
+  ggplot(aes(charges, fill = region)) +
+  geom_histogram() +
+  facet_wrap(~region) +
+  theme(legend.position = "none") +
+  theme_minimal()
+
+Data %>% 
+  as_tibble() %>% 
+  mutate(charges = log(charges)) %>% 
+  select(region, charges) %>% 
+  ggplot(aes(charges, fill = region)) +
+  geom_histogram() +
+  facet_wrap(~region) +
+  theme(legend.position = "none") +
+  theme_minimal()# to make the linear regression result reliable, the target var should be normally distributed
+```
+```{r}
+#checking corelation between the variables
+cor(insurance$charges,insurance$age)#0.2990082
+
+insurance_n <- select_if(insurance, is.numeric) 
+corrmatrix <- cor(insurance_n)
+corrplot::corrplot(corrmatrix, method=c("number"), type = "upper",tl.cex=.6	
+, tl.col="black", title="Correlation Plot",number.font = 2, mar=c(0,0,1,0),	)
+
+#from this we can say that charges comparitively highly corelated with "age" followed by "bmi". And there is no correlation between "bmi" and "children".
+```
+
+
+```{r EDA, message=FALSE, warning=FALSE, paged.print=TRUE}
+
+#looking into the correlation between charges and age, charges and bmi based on the region
+Data<-insurance
+x <- ggplot(Data, aes(age, charges,color=region)) +
+  geom_jitter( alpha = 0.5) +
+    theme_light()
+
+y <- ggplot(Data, aes(bmi, charges, color = region)) +
+  geom_jitter( alpha = 0.5) +
+  theme_light()
+
+#As Age go up Charges for health insurance also trends up.
+x
+y
+```
+
+
+```{r}
+#plot between the dependent variable and the all the other independent variable
+for (col in c('sex', 'region', 'children', 'smoker')) {
+  plot <- ggplot(data = insurance,
+                 aes_string(x = col, y = 'charges', group = col, fill = col)) + 
+            geom_boxplot(show.legend = FALSE) + 
+            ggtitle(glue::glue("Boxplot of Medical Charges per {col}"))
+  print(plot)
+}
+```
+
+
+## LMM
+
+```{r}
+model1_linear<-lm(charges~age+bmi+region+children+sex+smoker,data=insurance)
+summary(model1_linear)
+
+library(sjPlot)
+library(sjlabelled)
+library(sjmisc)
+
+theme_set(theme_sjplot())
+plot_model(model1_linear)
+```
+
+```{r}
+model2_linear<-lm(charges~age+bmi+smoker,data=insurance)
+summary(model2_linear)
+```
+
+## GLM
+```{r}
+# We want to classify patient as Risky or Safe based on some conditions. Looking at the dataset we can take BMI, age and smoker variable 
+# We use BMI > 25, age > 50 and smoker status = YES to categories our patient
+insurance$risk <- ifelse(insurance$bmi > 25 & insurance$age > 50 & insurance$smoker == "yes", 1, 0)
+
+# Down sampling data with 0 to match the 1
+insurance %>% 
+  filter(risk == 0) %>% 
+  slice_sample(n = 80) -> insurance_risk_0
+
+insurance %>% 
+  filter(risk == 1) -> insurance_risk_1
+
+insurance_risk_0 %>% 
+  rbind(insurance_risk_1) -> downsampled_data
+
+# Now splitting our dataset into test and train
+
+library(tidymodels)
+
+insurance_split <- initial_split(downsampled_data)
+training_data <- training(insurance_split)
+testing_data <- testing(insurance_split)
+
+
+model_glm <- glm(risk~age+sex+bmi+children+region,
+               family=binomial,
+               data=training_data)
+summary(model_glm)
+
+insurance %>% 
+  mutate(risk = risk %>% as.factor()) %>% 
+  ggplot(aes(risk, fill = risk)) +
+  geom_histogram(stat = "count") +
+  labs(title = "Distribution of the dependent variable")
+  theme_minimal() +
+  theme(legend.position = "none") 
+
+# Looking at the number of values in each category
+table(insurance$risk)
+```
+
+## LMM
+``` {r}
+library(ggplot2)
+
+# charges-age relationship, grouped by region
+ggplot(Data,aes(x=age,y=charges)) + geom_smooth(method = "lm",level = 0.95) + 
+geom_point() + facet_wrap(~region, nrow = 1, ncol = 4)
+
+# charges-bmi relationship, grouped by region
+ggplot(Data,aes(x=bmi,y=charges)) + geom_smooth(method = "lm",level = 0.95) + 
+geom_point() + facet_wrap(~region, nrow = 1, ncol = 4)
+
+# charges-children relationship, grouped by region
+ggplot(Data,aes(x=children,y=charges)) + geom_smooth(method = "lm",level = 0.95) + 
+geom_point() + facet_wrap(~region, nrow = 1, ncol = 4)
+
+# charges-smoker relationship, grouped by region
+ggplot(Data,aes(x=smoker,y=charges)) + geom_smooth(method = "lm",level = 0.95) + 
+geom_point() + facet_wrap(~region, nrow = 1, ncol = 4)
+```
+
+```{r}
+library(lme4)
+
+model_lr <- lm(charges~sex+age+bmi,data=insurance)
+model_lmer <- lmer(charges~sex+age+bmi+(1|region), data=insurance)
+anova(model_lmer, model_lr)
+
+summary(model_lmer)
+ranef(model_lmer)
+```
+
+```{r}
+insurance$charges_cat <- ifelse(insurance$charges >median(insurance$charges), 1, 0)
+
+insurance$smoker <- as.factor(insurance$smoker)
+
+model_glmer<-glmer(charges_cat~sex+age+bmi+children+smoker+(1|region),
+                   family=binomial,
+                   data=insurance)
+summary(model_glmer)
+```

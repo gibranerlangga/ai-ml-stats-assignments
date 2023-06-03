@@ -1,0 +1,70 @@
+---
+title: "qbs121_hw8_gibran"
+author: "Gibran Erlangga"
+date: "3/9/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1 Data Analysis: Propensity Scores
+
+Use the dataset called “Teaching Hospital Outcome.txt”. The outcome of interest is unfavorable discharge (discharge of a patient that is not to their home but to a nursing facility). The exposure of interest is whether the patient is in a teaching hospital or not. The covariates (potential confounders) are age, sex, race (white=referent, black, other), hispanic ethnicity, diabetes and hypertension.
+``` {r}
+data <- read.delim("Teaching Hospital Outcomes.txt")
+head(data, 3)
+```
+
+1. Estimate the odds ratio between unfavorable discharge and teaching hospital controlling for the other variables provided (e.g. potential confounding variables) using a logistic regression model.
+``` {r}
+logit <- glm(UNFAVDX ~ ., family=binomial, data=data)
+summary(logit)
+
+# odds ratio
+print('OddsRatio')
+exp(logit$coefficients)
+```
+
+2. Develop a prediction model for whether or not patients received care at a teaching hospital using the method of random Forests. Use this model to calculate the propensity of receiving care at a teaching hospital.
+``` {r}
+library(randomForest)
+library(tidyverse)
+library(janitor)
+
+data %>%
+  clean_names() -> data_clean
+
+# calculate propensity of TeachingHospital
+rf <- randomForest(as.factor(teaching_hospital) ~ ., data=data_clean)
+rf
+
+votes <- rf$votes
+estimated <- votes[,2]
+estimated %>% summary()
+```
+3. Create 10 bins of the propensity score (e.g deciles of the propensity scores). Estimate the odds ratio between unfavorable discharge and teaching hospital controlling for this categorical bin variable. Note: The random forest approach may not yield propensities with a alot of distinct values, which may lead to an error when the bins are created.
+``` {r}
+Bin = cut(estimated, unique(quantile(estimated, (0:10)/10, na.rm=TRUE)))
+
+model_binned <- glm(unfavdx ~. + Bin , data=data_clean, family = binomial)
+summary(model_binned)
+
+exp(model_binned$coefficients)
+```
+
+4. Calculate inverse propensity weights (after trimming the propensities so none is smaller than 0.01). Estimate the odds ratio between unfavorable discharge and teaching hospital using these weights.
+``` {r}
+# clip lower and upper values
+estimated_norm <- ifelse(estimated < 0.1, 0.1, estimated)
+estimated_norm <- ifelse(estimated > 0.9, 0.9, estimated)
+
+inverse_prop_weights <- ifelse(data_clean$unfavdx, 1/estimated_norm, 1/(1-estimated_norm))
+summary(inverse_prop_weights)
+
+glm <- glm(as.factor(unfavdx) ~ ., family=binomial, weights = inverse_prop_weights, data=data_clean)
+summary(glm)
+
+exp(glm$coefficients)
+```

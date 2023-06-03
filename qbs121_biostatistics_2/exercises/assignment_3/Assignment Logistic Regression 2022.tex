@@ -1,0 +1,194 @@
+
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[doublespacing]{setspace}
+\usepackage{geometry}
+\usepackage{listings}
+
+\newenvironment{enum1}
+{\begin{enumerate}
+  \setlength{\itemsep}{1pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\parsep}{0pt}
+}{\end{enumerate}}
+
+
+\setcounter{MaxMatrixCols}{10}
+
+\geometry{left=1in,right=1in,top=1in,bottom=1in}
+
+\begin{document}
+
+\title{Assignment on Logistic Regression }
+
+\maketitle
+
+\pagestyle{headings}
+
+{\bf Do the following parts below. Data Analyses 2.1 (25pts), 2.3 (25pts), 2.4(35pts), Simulate and Analyze 3.2 (15pts)}
+
+{\bf Bonus 15\% : Part 1 Problems}
+
+\section{Problems}
+
+\begin{enumerate}
+
+\item 
+\begin{enumerate}
+\item Write the log likelihood for the logistic regression model \\ logit$($Pr$[Y|X_1=x_1,X_2=x_2])=\beta_0 + \beta_1 x_1 + \beta_2 x_2$.
+\item Differentiate with respect to $\beta_0$.
+\item Let $f_i$ be the linear combination $\beta_0 + \beta_1 x_{i1} + \beta_2 x_{i2}$ and $p_i = \exp[f_i]/(1+\exp[f_i])$. Interpret $p_i$.
+\item At the maximum likelihoood estimate the derivative above equals zero. Equate the derivative to zero and write in terms of $p_i$. What does the sum $\sum_{i=1}^n p_i$ equal, and what does the mean $\sum_{i=1}^n p_i/n$ equal ?
+\item How would you describe $\sum (y_i - p_i)^2/n$ ?
+\end{enumerate}
+\end{enumerate} 
+
+
+\section{Data Analyses}
+
+
+\subsection{Analysis of Burn Data}
+
+\begin{enumerate}
+
+\item Install and utilize the R library {\it aplore3}. Using the dataset {\it burn1000} develop a model for predicting death. 
+\item Report the C-index.
+\item Is the effect of {\it inh\_inj} on mortality modified by age?
+\item Is the effect of age  on mortality modified by {\it inh\_inj}?
+
+\end{enumerate}
+
+\subsection{Analysis of University Admissions Data}
+
+Read in the data using the R code read.csv("https://stats.idre.ucla.edu/stat/data/binary.csv"). The dependent variable is admit.
+\begin{enumerate}
+
+\item Report the univariable associations of GPA, GRE and Rank with Admit.
+\item Develop a multivariable model.
+\item Interpret the coefficients in your model.
+\item Do any quadratic terms, or interactions add predictive ability?
+\item Report the C-statistic.
+
+\end{enumerate}
+
+\subsection{Data With a Zero Cell}
+
+Create the following dataset consisting of a dependent variable, Success, and two co-variates, Treatment and Female, using the following 3 lines of code:
+
+\vspace{3mm}
+\begin{spacing}{.25}
+\begin{lstlisting}
+Treatment = rep(c(0,1,0,1),each=10)
+Female = rep(c(0,1),each=20)
+Success = rep(rep(0:1,4), times=c(8,2,5,5,5,5,0,10))
+\end{lstlisting}
+\end{spacing}
+
+\vspace{5mm}
+
+\begin{enumerate}
+\item Calculate the success frequency for the 4 combinations of Treatment and Gender. 
+\item Estimate the odds ratio relating Success to Treatment.
+\item Estimate the odds ratio relating Success to Gender. 
+\item Include in a logistic regression the interaction of Treatment and Gender and comment on its statistical significance and coefficient.
+\end{enumerate}
+
+\subsection{Concussion Data}
+
+Run the following code to read in and restructure a dataset that recorded concussions in college sports according to sex of athlete, sport and year. The columns in the matrix (data.frame) named Y are the number of athletes with and without concussions respectively.
+
+\vspace{3mm}
+\begin{spacing}{.25}
+\begin{lstlisting}
+DF <- read.delim("http://users.stat.ufl.edu/~winner/data/concussion.dat", sep="", header=FALSE)
+names(DF) <- c("Sex","Sport","Year","Concussion","Count")
+DF0 <- DF[DF$Concussion==0,]
+DF1 <- DF[DF$Concussion==1,]
+Cov <- data.frame(DF0[,1:3])
+Y <- cbind(CountConc=DF1[,5], CountNoConc=DF0[,5])
+\end{lstlisting}
+\end{spacing}
+
+
+\begin{enumerate}
+\item Derive the contingency table of concussion by sex.
+\item Calculate risk (frequency) of concussions by sex, and the risk ratio comparing males to females.
+\item Apply Pearson's chi-square test to the contingency table.
+\item Use logistic regression to test if concussions are equally likely between males and femakles.
+\item Repeat the steps above substituting the variables sports for sex.
+\item Run a multivariable logistic regression of concusions by sex, sports and year.
+\item Report the adjusted odds ratios for sex and sports.
+\item Test if there is an interaction of sex and sports.
+\end{enumerate}
+
+
+\section{Simulate and Analyze}
+
+\begin{enumerate}
+
+\item Run the code below. Then try different arguments to the function, f, e.g. try f(N0=30,N1=30, mu0=0, mu1=0.5). What is this code illustrating?
+
+\begin{spacing}{.25}
+\begin{lstlisting}
+f <- function(R=500, N0=30, N1=30, mu0=0, mu1=0, sd0=1, sd1=0) {
+  ptt <- plinear <- plogistic <- rep(NA, R)
+  for (r in 1:R) {
+    Y0 <- rnorm(n=N0, mean=mu0, sd=sd0)
+    Y1 <- rnorm(n=N1, mean=mu1, sd=sd1)
+    ptt[r] <-  t.test(Y0, Y1)$p.value
+    Y <- c(Y0, Y1)
+    X <- rep(0:1, times=c(N0,N1))
+    plinear[r] <- summary(lm(Y ~ X))$coef["X",4]
+    plogistic[r] <- summary(glm(X ~ Y, family=binomial))$coef["Y",4]
+    }
+  par(mfrow=c(1,2))
+  plot(plogistic, ptt)
+  plot(plogistic, plinear)
+  print(table(plogistic < 0.05, ptt <0.05))
+  print(summary(plogistic - ptt))
+  print(table(plogistic < 0.05, plinear <0.05))
+  print(summary(plogistic - plinear))
+  }
+
+f()
+\end{lstlisting}
+\end{spacing}
+
+\item Explain why the estimate of the coefficient for X in the logistic regression adjusting for covariate Z1 (see below) is significantly different from zero despite the causal effect being zero?
+
+
+\begin{spacing}{.25}
+\begin{lstlisting}
+n = 2500
+Z1 = rnorm(n)
+Z2 = rnorm(n)
+X = 0.7*rnorm(n) + 0.7*Z2
+Lin = 0*X - 0.0*Z1 + 0.5*Z2 # causal model
+Y = runif(n) < 1/(1+exp(-Lin))
+summary(glm(Y ~ X + Z1, family=binomial))
+\end{lstlisting}
+\end{spacing}
+
+\item (a) What does the following simulated data and analysis indicate about {\it probit} regression? (b) 
+Comment on the simlarities and differences the probit and logistic regressions, such as the Z values for the three covariates in the model.
+
+\begin{spacing}{.25}
+\begin{lstlisting}
+beta <- c(1, -1, +2)
+cutoff <- 0.5
+n <- 10^4
+X <- cbind(runif(n) < 0.25, runif(n) < 0.50, rnorm(n))
+Y <- X %*% beta + rnorm(n)
+binary.Y <- ifelse(Y < cutoff, 1, 0)
+
+summary(X)
+summary(glm(binary.Y ~ X, family=binomial(probit))
+summary(glm(binary.Y ~ X, family=binomial) # for comparison with probit
+\end{lstlisting}
+\end{spacing}
+
+\end{enumerate}
+
+
+\end{document}
