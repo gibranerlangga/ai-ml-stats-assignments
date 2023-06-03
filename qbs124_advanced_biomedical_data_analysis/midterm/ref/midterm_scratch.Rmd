@@ -1,0 +1,82 @@
+---
+title: "qbs124_gibran_midterm_scratch"
+author: "Gibran Erlangga"
+date: "5/13/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+``` {r}
+femLDA=function() {
+# dump("femLDA","c:\\QBS124\\femLDA.r")
+# Application of LDA to identification of female in Goldman.csv file 
+t0=Sys.time() 
+d=read.csv("Goldman.csv",stringsAsFactors=F) 
+nm=names(d[18:(ncol(d)-9)])
+sex=as.numeric(as.vector(d[,3]))
+d=as.matrix(d[,18:(ncol(d)-9)])
+d=d[!is.na(sex),]
+sex=sex[!is.na(sex)]
+nr=nrow(d);nc=ncol(d)
+
+#Double loop for search of the two best predictors that maximize delta2 delta2.max=0
+delta2.max=0
+for(i1 in 1:nc)
+for(i2 in 1:nc)
+if(i1>i2)
+{
+x1=d[,i1];x2=d[,i2] 
+ina=is.na(x1) | is.na(x2) 
+x1=x1[!ina];x2=x2[!ina] 
+sexi=sex[!ina]
+X=cbind(x1,x2)
+X1=X[sexi==0,];X2=X[sexi==1,] 
+n1=nrow(X1);n2=nrow(X2) 
+mu1=colMeans(X1);mu2=colMeans(X2) 
+Omega=1/(n1+n2-2)*(var(X1)*(n1-1)+var(X2)*(n2-1)) 
+iOmega=solve(Omega) 
+delta2=t(mu1-mu2)%*%iOmega%*%(mu1-mu2) 
+if(delta2>delta2.max) {
+  delta2.max=delta2
+  i1.best=i1
+  i2.best=i2
+}
+}
+totmisl=2*pnorm(-.5*sqrt(delta2)) 
+print(c(i1.best,i2.best,delta2.max,totmisl)) 
+x1=d[,i1.best];x2=d[,i2.best] 
+ina=is.na(x1) | is.na(x2) 
+x1=x1[!ina];x2=x2[!ina]
+sexi=sex[!ina]
+X=cbind(x1,x2)
+X1=X[sexi==0,];X2=X[sexi==1,]
+n1=nrow(X1);n2=nrow(X2)
+mu1=colMeans(X1);mu2=colMeans(X2)
+mu=0.5*(mu1+mu2)
+Omega=1/(n1+n2-2)*(var(X1)*(n1-1)+var(X2)*(n2-1))
+iOmega=solve(Omega)
+a=iOmega%*%(mu1-mu2)
+par(mfrow=c(1,1),mar=c(4.5,4.5,4,1),cex.lab=1.5,cex.main=1.5) 
+
+# plot(x1,x2,col=3-sexi,cex=1.5,xlab=nm[i1.best],ylab=nm[i2.best])
+#Total theoretical misclass error
+thms.er=round(2*pnorm(-sqrt(delta2.max)/2),3)
+#Total empirical misclass error
+classR=as.vector((X-rep(1,n1+n2)%*%t(mu))%*%a)
+#print(sex)
+#return(classR)
+empms.er=round(sum(classR<0 & sexi==0)/n1+sum(classR<0 & sexi==1)/n2,3)
+title(paste("Best LDA predictors, n.male=",n1,", n.female=",n2,"\nTotal theoretical miscl. error=",thms.er,
+", Total empir. misclas. error=",empms.er, sep="")) 
+legend("topleft",c("Female","Male"),col=2:3,pch=1,cex=2) 
+y1=seq(from=10,to=50,length=100) 
+y2=mu[2]-(y1-mu[1])*a[1]/a[2]
+lines(y1,y2,lwd=2) 
+print(Sys.time()-t0) 
+}
+
+femLDA()
+```

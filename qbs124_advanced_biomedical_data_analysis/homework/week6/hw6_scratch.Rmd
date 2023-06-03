@@ -1,0 +1,405 @@
+---
+title: "hw6_scratch"
+author: "Gibran Erlangga"
+date: "5/6/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+``` {r}
+collegePCA <- function(job=1) {
+#dump("collegePCA","c:\\QBS124\\collegePCA.r")
+XA=read.csv("CollegeAdmData.csv")
+XA=as.matrix(XA)
+n=nrow(XA)
+namit=c("High school curriculum","SAT score","College interview","Out of school activity","Sport & research programs","Essay","Letters of recommendation")
+nam=c("HSC","SAT","CI","OSA","SR","ES","LR") #short names
+m=length(nam)
+
+if(job==1) #plot pdf/pmf
+{	
+	m=ncol(XA)
+	par(mfrow=c(2,4))
+	for(i in 1:m)
+	{
+		xc=XA[,i]
+		if(i==1 || i>4)
+		{
+			pr=rep(0,5)
+			for(j in 1:5) pr[j]=mean(xc==j)
+			plot(1:5,pr,type="h",lwd=5,ylab="Probability",xlab=nam[i],main=namit[i])		
+		}
+		if(i==2)
+		{
+			plot(density(xc),type="l",ylab="Density",xlab=nam[i],main=namit[i])
+			rug(xc)				
+		}
+		if(i==3 || i==4)
+		{
+			pr=rep(0,10)
+			for(j in 1:10) pr[j]=mean(xc==j)
+			plot(1:10,pr,type="h",lwd=5,ylab="Probability",xlab=nam[i],main=namit[i])		
+		}	
+	}
+}
+if(job==2) #pairwise correlation
+{
+	par(mfrow=c(7,7),mar=c(2,2,2,2),omi=c(0,0,0.1,0.1))
+	for(i1 in 1:7)
+	for(i2 in 1:7)
+	{
+		x1=XA[,i1];x2=XA[,i2]
+		plot(x1,x2,xlab="",ylab="")	
+		if(i1==1) mtext(side=3,nam[i2],line=.25,font=2)
+		if(i2==m) mtext(side=4,nam[i1],line=.5,font=2)
+		abline(lsfit(y=x2,x=x1),col=2,lwd=3)
+		if(i1 !=i2) legend("topleft",paste("r=",round(cor(x1,x2),2),sep=""),cex=1.25,bg="gray92")
+	}
+}
+if(job==3) #1st PCA: projection onto line, wrong direction
+{
+	par(mfrow=c(1,1),mar=c(4.5,4.5,4,1),cex.lab=1.5,cex.main=1.5,cex.axis=1.25)
+	sc=rep(0,n)
+	for(i in 1:m)
+		sc=sc+rank(XA[,i])
+		
+	V=var(XA)
+	eV=eigen(V)
+	un=rep(1,n)
+	pr1=(XA-un%*%t(colMeans(XA)))%*%eV$vectors[,1]
+	
+	plot(sc,pr1,xlab="Total ranks/score",ylab="PCA projection onto line",main="")
+	abline(lsfit(y=pr1,x=sc),lwd=3,col=2)
+	h=round(eV$vectors[,1],3)
+	strh=paste(n,"college applicants\nStudent synthetic score = ")
+	for(j in 1:m)
+	{
+		if(h[j]>0) sig="+" else sig="-"
+		strh=paste(strh,sig,abs(h[j]),"*",nam[j])
+	}
+	title(strh)	
+	legend("topright","Wrong direction",cex=2,lty=1,lwd=3,col=2)
+}
+if(job==3.1) #1st PCA: projection onto line, fixed, right firection
+{
+	sc=rep(0,n)
+	for(i in 1:m)
+		sc=sc+rank(XA[,i])			
+			
+	V=var(XA)
+	eV=eigen(V)
+	un=rep(1,n)
+	pr1=-(XA-un%*%t(colMeans(XA)))%*%eV$vectors[,1]
+	
+	
+	par(mfrow=c(1,1),mar=c(4.5,4.5,4,1),cex.lab=1.5,cex.main=1.5,cex.axis=1.25)
+	plot(sc,pr1,xlab="Total rank/score",ylab="Reverse (-) PCA projection onto line",main="")
+	h=round(-eV$vectors[,1],3)
+	strh=paste(n,"college applicants\nStudent synthetic score = ")
+	for(j in 1:m)
+	{
+		if(h[j]>0) sig="+" else sig="-"
+		strh=paste(strh,sig,abs(h[j]),"*",nam[j])
+	}
+	title(strh)		
+	
+	sco=sc[order(-sc)]
+	segments(sco[1000],-1000,sco[1000],1000,col=3)
+	points(sc[sc>=sco[1000]],pr1[sc>=sco[1000]],col=3,pch=16,cex=.5)
+	
+	
+	pr1p=pr1[order(-pr1)]
+	segments(-1000,pr1p[1000],100000,pr1p[1000],col=4)
+	points(sc[pr1>=pr1p[1000]]+100,pr1[pr1>=pr1p[1000]],col=4,pch=16,cex=.5)
+	
+	text(sc+100,pr1,as.character(1:n),adj=0,cex=.5)
+	abline(lsfit(y=pr1,x=sc),col=2,lwd=3)
+	r2=cor(pr1,sc)^2
+	legend("bottomright",paste("R-squared =",round(r2,2)),cex=2)
+	legend("topleft",c("1000 best total rank","1000 best PCA-based"),pch=16,col=3:4,cex=1.25)
+}
+if(job==4) #Final decision: who is in
+{
+	pdf("c:\\QBS124\\collegePCA_4.pdf",width=30,height=5)
+	par(mfrow=c(2,1),mar=c(3,2,3,1))
+	sc=rep(0,n)
+	for(i in 1:m)
+		sc=sc+rank(XA[,i])
+		
+	V=var(XA)
+	eV=eigen(V)
+	un=rep(1,n)
+	pr1=-(XA-un%*%t(colMeans(XA)))%*%eV$vectors[,1]
+	ii=1:n
+	plot(density(sc),type="l",xlab="Total rank",ylab="")
+	segments(sc,rep(-1,n),sc,rep(2*10^-5,n))
+	text(sc,rep(2.1*10^-5,n),ii,srt=90,adj=0)
+	id.sc.adm=ii[order(-sc)]
+	
+	plot(density(pr1),type="l",xlab="PC1",ylab="")
+	segments(pr1,rep(-1,n),pr1,rep(.001,n))
+	text(pr1,rep(.0012,n),ii,srt=90,adj=0)
+	dev.off()
+	id.pr1.adm=ii[order(-pr1)]
+	
+	print("1000 Students to admit (id):")
+	da=data.frame(cbind(id.pr1.adm[1:1000],id.sc.adm[1:1000]))
+	names(da)=c("Max eigenvector","Total score")
+	print(da)
+}
+
+}
+
+collegePCA(job=3.1)
+```
+
+``` {r}
+swiss <- function(job=1) {
+#dump("swiss","c:\\QBS124\\swiss.r")
+X=matrix(scan("SwissBankNotes100+100.txt"),byrow=T,nrow=200)
+n=nrow(X);m=ncol(X)
+
+#========================== Matrix centering and computation of Z'Z 
+Z=X
+for(j in 1:m)
+{
+	xj=X[,j]
+	Z[,j]=xj-mean(xj)
+}
+tZZ=t(Z)%*%Z # proportional to var(X)
+#return(tZZ/var(X))
+
+
+if(job==0) # preliminary data column-by-column visualization 
+{
+	par(mfrow=c(2,3),mar=c(2,3,3,1))
+	for(i in 1:6)
+	{
+		a=X[,i]
+		plot(a,a,type="n",ylim=c(0,2),main=paste("The",i,"th dimension",sep=""),ylab="")
+		rug(a[1:100], col=3,lwd=3,ticksize=0.07)
+		lines(density(a[1:100]),col=3,lwd=5)
+		rug(a[101:200], col=2,lwd=3,ticksize=0.035)
+		lines(density(a[101:200]),col=2,lwd=5)
+	}
+}
+
+
+if(job==1)
+{
+	par(mfrow=c(1,1),mar=c(4,3,3,1))
+# Projection onto line using points
+	a=eigen(tZZ,symmetric=T)$vectors[,1]
+	print("Maximum eigenvector:")
+	print(a)
+	Z=X-rep(1,n)%*%t(colMeans(X))
+	proj=as.vector(Z%*%a)
+	plot(proj,rep(1,n),ylim=c(0,1),type="n",xlab="PCA projections",ylab="")
+	title("Projection on the maximum eigenvector")
+	
+	rug(proj[1:100],ticksize=0.07,col=3,lwd=3)
+	lines(density(proj[1:100]),col=3,lwd=5)
+	rug(proj[101:200],ticksize=0.035,col=2,lwd=3)
+	lines(density(proj[101:200]),col=2,lwd=5)
+}
+if(job==1.1) #Normalized PCA
+{
+# Projection onto line using segments for better visualization
+# using normalized PCA
+
+	Z=X
+	for(j in 1:m)
+	{
+		xj=X[,j]
+		Z[,j]=(xj-mean(xj))/sd(xj)/sqrt(n)
+	}
+	tZZ=t(Z)%*%Z
+	tZZ1=cor(X)
+	print(tZZ);print(tZZ1)
+		
+	par(mfrow=c(1,1),mar=c(4,4,3,1))
+	a=eigen(tZZ,symmetric=T)$vectors[,1]
+	proj=as.vector(Z%*%a)
+	plot(proj,rep(1,n),type="n",ylim=c(0,10),xlab="",ylab="",main="Normalized PCA does not work")
+	rug(proj[1:100],ticksize=0.07,col=3,lwd=3)
+	lines(density(proj[1:100]),col=3,lwd=5)
+	rug(proj[101:200],ticksize=0.04,col=2,lwd=3)
+	lines(density(proj[101:200]),col=2,lwd=5)
+	legend("topleft",c("Genuine","Faked"),lty=1,lwd=3,col=c(3,2),cex=2)
+}
+
+if(job==2)
+{
+# Projection onto plane & two separation lines
+	par(mfrow=c(1,1),mar=c(4.5,4.5,4,1),cex.lab=1.5,cex.main=1.5,cex.axis=1.25)
+	a=eigen(tZZ,symmetric=T)$vectors[,1:2]
+	Z=X-rep(1,n)%*%t(colMeans(X))
+	proj=Z%*%a
+	plot(proj,xlab="1st PCA component",ylab="2nd PCA component")
+	title("Projection onto plane: green=genuine, red=faked")
+	points(proj[1:100,],col=3,pch=16)
+	points(proj[101:200,],col=2,pch=16)
+	text(proj[,1],proj[,2],1:nrow(proj),adj=0)
+	
+#PCA logistic regression 	
+	y=c(rep(0,100),rep(1,100))
+	oLOG.R=glm(y~proj,family=binomial)
+	print(summary(oLOG.R))
+	a=coef(oLOG.R)
+	x=seq(from=-3,to=4,length=100)
+	proj.y=-(a[1]+a[2]*x)/a[3]
+	lines(x,proj.y,lwd=2)	
+# LDA separation
+	X=proj
+	X0=X[y==0,];n0=nrow(X0)
+	OM0=var(X0)
+	mu0=colMeans(X0)
+	
+	X1=X[y==1,];n1=nrow(X1)
+	OM1=var(X1)
+	mu1=colMeans(X1)
+	
+	OM=((n0-1)*OM0+(n1-1)*OM1)/(n0+n1-2)
+	iOM=solve(OM)
+	a=iOM%*%(mu1-mu0)
+	mu=colMeans(X)
+	yLDA=mu[2]-(x-mu[1])*a[1]/a[2]
+	lines(x,yLDA,lwd=2,col=2)	
+	legend("topright",c("PCA2 Logistic regression","PCA2 LDA"),col=1:2,lty=1,lwd=2,cex=1.5)
+}
+if(job==2.1) #Normalized PCA
+{
+# Projection onto plane
+	par(mfrow=c(1,1),mar=c(4.5,4.5,4,1),cex.lab=1.5,cex.main=1.5,cex.axis=1.25)
+	Z=X
+	meanX=colMeans(X)
+	sdX=sqrt(diag(var(X)))
+	for(i in 1:ncol(X)) Z[,i]=(X[,i]-meanX[i])/sdX[i]
+	tZZ1=cor(Z)
+	a=eigen(tZZ1,symmetric=T)$vectors[,1:2]
+	proj=Z%*%a
+	plot(proj,xlab="1st PCA component",ylab="2nd PCA component")
+	title("Projection onto plane. Normalized PCA (green=genuine, red=faked)")
+	points(proj[1:100,],col=3,pch=16)
+	points(proj[101:200,],col=2,pch=16)
+}
+if(job==3)
+{
+# Quality of projection
+	par(mfrow=c(1,1),mar=c(4.5,4.5,4,1),cex.lab=1.5,cex.main=1.5)
+	LAMB=eigen(tZZ,symmetric=T)$values
+	prv=rep(NA,ncol(tZZ))
+	for(j in 1:m)
+	 prv[j]=sum(LAMB[1:j])/sum(LAMB)
+	plot(0:6,c(0,prv),lwd=3,type="b",xlab="PCA components",ylab="Sum of variances of first omponents")
+	title("Proportion of the cumulative variance explained by PCA in counterfeit bills") 
+}
+if(job==4) # Projection on the plane with % variance explained
+{
+# Projection onto plane & two separation lines
+	par(mfrow=c(1,1),mar=c(4.5,4.5,4,1),cex.lab=1.5,cex.main=1.5,cex.axis=1.25)
+	a=eigen(tZZ,symmetric=T)$vectors[,1:2]
+	Z=X-rep(1,n)%*%t(colMeans(X))
+	proj=Z%*%a
+	L12=eigen(tZZ,symmetric=T)$values
+	print(L12)
+	var1.expl=L12[1]/sum(L12)*100
+	var2.expl=L12[2]/sum(L12)*100
+	var12.expl=(L12[1]+L12[2])/sum(L12)*100
+	txt1=paste("1st PCA component with % variance explained =",round(var1.expl))
+	txt2=paste("2nd PCA component with % variance explained =",round(var2.expl))
+	txt12=paste("Two component PCA % variance explained =",round(var12.expl))
+	plot(proj,xlab=txt1,ylab=txt2)
+	title(paste("Projection onto plane: green=genuine, red=faked\n",txt12))
+	points(proj[1:100,],col=3,pch=16)
+	points(proj[101:200,],col=2,pch=16)
+	text(proj[,1],proj[,2],1:nrow(proj),adj=0)
+}
+}
+
+swiss(job=2)
+
+```
+
+``` {r}
+swiss(2)
+```
+
+``` {r}
+iris3D <- function(job=1,out=4) {
+#dump("iris3D","c:\\QBS124\\iris3D.r")
+print(date())
+nm=names(iris)
+flnames=as.character(iris[,5])
+uflnames=unique(flnames);nfl=length(uflnames)
+cl=rep(0,nrow(iris))
+for(i in 1:nfl) cl[flnames==uflnames[i]]=i
+allcl=c("green","blue","red")
+print(cbind(uflnames,allcl))
+if(job==1) # 2D scatter plots
+{
+	par(mfrow=c(2,3),mar=c(4.5,4.5,1,1),cex.main=1.6,cex.lab=1.5)
+	
+	k=0
+	for(i in 1:4)
+	for(j in 1:4)
+	if(i>j)
+	{
+		plot(iris[,i],iris[,j],pch=16,cex=1.5,col=allcl[cl],xlab=nm[i],ylab=nm[j],main="")	
+		k=k+1
+		wher="topleft";if(k==3 | k==5) wher="topright"		
+		legend(wher,uflnames,col=allcl,pch=16,cex=1.4)	
+	}
+}
+if(job==2) #3D scatter plot
+{
+	par(mfrow=c(1,1),mar=c(1,1,1,1))
+	X=as.matrix(iris[,1:4])
+	X=X[,-out]
+	nmo=nm[-out]
+	print(nmo)
+	op=persp(x=range(X[,1]),y=range(X[,2]),z=matrix(ncol=2,nrow=2),zlim=range(X[,3]),xlab=nmo[1],ylab=nmo[2],zlab=nmo[3],theta=35,phi=40,r=1000,main="",ticktype="detailed")
+    p3=trans3d(x=X[,1], y=X[,2], z=X[,3], pmat=op)
+    points(p3,pch=16,cex=1.25,col=allcl[cl])
+    n=length(X[,1])
+    p2=trans3d(x=X[,1], y=X[,2], z=rep(min(X[,3]),n), pmat=op)
+    segments(p3$x,p3$y,p2$x,p2$y)
+    points(p2,pch=4,cex=.75,col=allcl[cl])
+}
+if(job==3) #bird view
+{
+	for(theta in 1:360)
+	{
+		ic=as.character(theta)
+		if(theta<10) ic=paste("00",ic,sep="")
+		if(theta>=10 & theta<100) ic=paste("0",ic,sep="")
+		fn=paste("c:\\QBS124\\iris360\\ir_",ic,".png",sep="")
+		png(fn,width=1000,height=1000)
+		par(mfrow=c(1,1),mar=c(3,1,1,1))
+		X=as.matrix(iris[,1:4])
+		print(names(X))
+		X=X[,-out]
+		nmo=nm[-out]
+		op=persp(x=range(X[,1]),y=range(X[,2]),z=matrix(ncol=2,nrow=2),zlim=range(X[,3]),xlab=nmo[1],ylab=nmo[2],zlab=nmo[3],theta=theta,phi=40,r=1000,main="",ticktype="detailed")
+		p3=trans3d(x=X[,1], y=X[,2], z=X[,3], pmat=op)
+		points(p3,pch=16,cex=1.25,col=allcl[cl])
+		n=length(X[,1])
+		p2=trans3d(x=X[,1], y=X[,2], z=rep(min(X[,3]),n), pmat=op)
+		segments(p3$x,p3$y,p2$x,p2$y)
+		points(p2,pch=4,cex=.75,col=allcl[cl])
+		dev.off()	
+	}
+
+	system("magick c:\\QBS124\\iris360\\*.png c:\\QBS124\\iris.gif")
+}
+print(date())
+}
+
+iris3D(job=2)
+out
+```
+

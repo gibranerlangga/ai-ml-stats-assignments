@@ -1,0 +1,226 @@
+---
+title: "QBS124_ASS3"
+author: "Parinitha Kompala"
+date: "4/17/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1. (10 points). Referring to the R function cdf.dyn the cost of overlooking a patient with high blood pressure that may lead to a stroke is $50K and the cost of wrong decision on the high risk health situations is USD 25K. Use the binormal curve to find the optimal decision on the threshold that minimizes the cost. Display the binormal ROC and the vertical and horizontal lines for the implied optimal false positive and sensitivity rates. Display axis(side=3) to show the threshold values.
+```{r}
+#bp<-read_csv("/Users/parinithakompala/Desktop/QBS124/ass2/bp.csv")
+
+
+	n=100
+	X=exp(rnorm(n,mean=1,sd=.1))*75
+	Y=exp(rnorm(1.5*n,mean=.9,sd=.08))*75
+	XY=sort(c(X,Y))
+	X=sort(X);Y=sort(Y)
+	nX=length(X);nY=length(Y)
+	n=length(XY)
+	th=XY
+	niY=niX=rep(NA,n)
+	for(i in 1:n)
+	{
+			ch=as.character(i)
+			if(i<10) ch=paste("00",ch,sep="")
+			if(i>=10 & i<100) ch=paste("0",ch,sep="")       
+			jpeg(paste("/Users/parinithakompala/Desktop/QBS124/ass3/qbs124gifs",ch,".jpg",sep=""),width=1200,height=600)
+			par(mfrow=c(1,2),mar=c(4.5,4.5,3,1),cex.lab=1.75,cex.main=1.75)
+			plot(XY,XY,type="n",ylim=c(0,1),xlab="Combined data",ylab="Proportion",main="Two CDFs for uniform data comparison: Y < X")
+			legend("topleft",c("Data","Threshold","cdf of sample X","cdf of sample Y"),col=c(1,1,2,3),lwd=c(1,3,3,3),cex=1.5,bg="gray95")
+			rug(X,ticksize=0.075,col=2)
+			rug(Y,ticksize=0.05,col=3)
+			segments(th[i],-1,th[i],.05,lwd=3)
+			segments(min(XY)-1,0,th[i],0)
+			Xi=c(X[X<=th[i]],th[i])
+			niX[i]=length(Xi)
+			lines(Xi,(1:niX[i])/nX,type="s",col=2,lwd=2)
+			
+			Yi=c(Y[Y<=th[i]],th[i])
+			niY[i]=length(Yi)
+			lines(Yi,(1:niY[i])/nY,type="s",col=3,lwd=2)
+			
+			plot(niX[1:i]/nX,niY[1:i]/nY,xlim=c(0,1),ylim=c(0,1),lwd=3,type="s",xlab="1-Specificity (false positive)",ylab="Sensitivity (true positive)",main="ROC curve")			
+			segments(-1,-1,2,2,col=4)
+			
+			dev.off()		
+	}
+
+```
+
+
+
+2. (10 points). Using the data set Height Weight.csv for 25,000 Korean teenagers estimate the weight of an individual with height 70 inches. Display the scatterplot and the prediction along with the ±1.96 sigma  y|x interval using the sample estimates from the Normal regression section (no lm function). #vertical segment arounf prediction
+
+
+```{r}
+Korean_teenagers <- read.csv('HeightWeight.csv')
+
+
+# in this case, Y = weight, X = height, with x = 70 inches
+nrmal_reg <- function(y, X, x) {
+  mean_X = mean(X)
+  std_X = (sd(X))
+  mean_y = mean(y)
+  std_y = (sd(y))
+  std_y_sq=(sd(y))^2
+  corr_coef = cor(y, X)
+  #corr_coef = sqrt(1-((1.96^2)/std_y_sq))
+  return (mean_y + corr_coef*(std_y/std_X)*(x-mean_X))
+}
+
+# conf.intup<-function(x){
+#   n=length(x)
+#   cf.upper<-133.2676+((1.96*(sd(x)))/(sqrt(n)))
+#   return(cf.upper)
+#   
+# }
+# 
+# 
+# upper<-conf.intup(Korean_teenagers$Weight.Pounds.)
+# 
+# conf.intlo<-function(x){
+#   n=length(x)
+#   cf.lower<-133.2676-((1.96*(sd(x)))/(sqrt(n)))
+#   return(cf.lower)
+#   
+# }
+# lower<-conf.intlo(Korean_teenagers$Weight.Pounds.)
+estimated_weight = nrmal_reg(Korean_teenagers$Weight.Pounds., Korean_teenagers$Height.Inches., 70)
+
+estimated_weight
+estimated_wt_2<-nrmal_reg(Korean_teenagers$Weight.Pounds., Korean_teenagers$Height.Inches., 71)
+slope=(estimated_wt_2-estimated_weight)/1
+estimated_inter=nrmal_reg(Korean_teenagers$Weight.Pounds., Korean_teenagers$Height.Inches., 0)
+RO=cor(Korean_teenagers$Weight.Pounds.,Korean_teenagers$Height.Inches.)
+a<-sqrt((1-RO)*(sd(Korean_teenagers$Weight.Pounds.)^2))
+b<-a*1.96
+upper<-(estimated_inter+b)
+lower<-(estimated_inter-b)
+
+1.96*sd(Korean_teenagers$Weight.Pounds.)
+
+scatter.smooth(x=Korean_teenagers$Height.Inches., y=Korean_teenagers$Weight.Pounds., main="Hight ~ Weight")
+#segments(1.96)
+abline(estimated_inter,slope, col = "green")
+#abline(h=upper, col = "blue",lty=2)
+abline(upper,slope, col = "green")
+abline(lower,slope, col = "green")
+#abline(h=lower,col = "blue",lty=2)
+abline(v=70,h=133.2676,col="red")
+
+segments(x0 = 70, y0 = upper, x1 =70 , y1 = lower, col = "red") 
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+3. (5 points). Correct the wrong conclusion on improving the revenue by hiring more truck drives by running a linear regression of revenue on time and the number of truck drivers. Explain why it helps.
+
+##iid assumtion does not get valid as we have the values grows in time.As we have value growing time we use the formula coeff of termination in regression $$R^2=1-\frac{\sum x_i^2}{\sum(y_i-\overline y)^2}$$, $$\sum x_i^2$$ numerator, is the vertical distance square, while in the denominator, which is so initally there was a huge variance which is not the variance of y as y grows in time, so here the denominator becomes huge and R^2 goes close to 1.
+##In order to fix this problem x and y has to be iid or flactualing from the mean of value, a constant.We can exclude time from the analysis.Compute the trend and revenue as the function of time and take residuals, take difference between revenue and trend, and same for truck drivers and then correlate both the residuals.
+The correlation coefficient is positive and also the coefficient of termination is 0.067.
+```{r}
+truckDrivers<-read_csv("truckR.data.csv")
+n=nrow(truckDrivers)
+truckDrivers$ti=1:n
+
+par(mfrow=c(1,1),mar=c(4,4,1,1))
+x=lm(truc.dr~ti,data=truckDrivers)$residuals
+y=lm(revenue~ti,data=truckDrivers)$residuals
+plot(x,y,xlab="",ylab="",cex=1.25,pch=16)
+abline(lsfit(x=x,y=y),lwd=3)
+mtext(side=1,"Truck residuals",cex=1.25,line=2.5)
+mtext(side=2,"Revenue residuals",cex=1.25,line=2.5)
+r2=cor(x,y)^2
+text(-1,6,paste("R-squared =",round(r2,3)),adj=0,font=2,cex=1.5)
+
+```
+
+
+
+
+4. (5 points). Provide possible explanation for the negative sign at Nose despite its positive correlation with Height.
+```{r}
+da=read.csv("/Users/parinithakompala/Desktop/QBS124/ass3/HeightFootNose.csv")
+par(mfrow=c(1,3),mar=c(3.5,3.5,3,1))
+plot(da$Foot,da$Height,xlab="",ylab="")
+title(paste("Height versus length of foot, R =",round(cor(da$Foot,da$Height),2)))
+mtext(side=1,"Foot, inches",cex=1.25,line=2.5)
+mtext(side=2,"Height, inches",cex=1.25,line=2.25)
+print(summary(lm(Height~Foot,data=da)))
+abline(lsfit(x=da$Foot,y=da$Height),lwd=3)
+
+plot(da$Nose,da$Height,xlab="",ylab="")
+title(paste("Height versus length of nose, R =",round(cor(da$Nose,da$Height),2)))
+mtext(side=1,"Nose, inches",cex=1.25,line=2.5)
+mtext(side=2,"Height, inches",cex=1.25,line=2.25)
+print(summary(lm(Height~Nose,data=da)))
+abline(lsfit(x=da$Nose,y=da$Height),lwd=3)
+
+plot(da$Nose,da$Foot,xlab="",ylab="")
+title(paste("Height versus length of nose, R =",round(cor(da$Nose,da$Foot),2)))
+mtext(side=1,"Foot, inches",cex=1.25,line=2.5)
+mtext(side=2,"Nose, inches",cex=1.25,line=2.25)
+print(summary(lm(Nose~Foot,data=da)))
+abline(lsfit(x=da$Nose,y=da$Foot),lwd=3)
+
+print(summary(lm(Height~Foot+Nose,data=da)))
+print(c(sd(da$Height),sd(da$Foot),sd(da$Nose)))
+
+f=da$Foot-mean(da$Foot);n=da$Nose-mean(da$Nose)
+h=da$Height
+print(summary(lm(h~f+n,data=da)))
+```
+##Taller people and long nose we do not take into account there feet but the contribution of the feet is impossible, the only way to get the full picture is run regression.We need to put foot constant,so during that time we can say the taller people have shorter nose or taller, like with respect of the foot size of them all being same, that is constant.
+
+5. (10 points). Display the time watching of alcohol scenes as a function of age for a black girl who drinks, has an alcohol related item, with high income and high parents’ education, and has good grades as in function kidsdrink(job=2). To contrast, display the same girl but who does not drink and does not have an alcohol related item. Compute and display the the effect of drinking and having an alcohol related item.
+```{r}
+kidsDrink<-read.csv("kidsdrink.csv")
+
+```
+
+
+
+
+```{r}
+d<-kidsDrink
+d=cbind(d,log(1/60^2+d$alcm))
+	names(d)[ncol(d)]="logalcm"
+	o=lm(logalcm~drink+age+boy+race+alcbr+pared+inc+grade,data=d)
+	print(summary(o))
+	par(mfrow=c(1,1),mar=c(4.5,4.5,1,1),cex.lab=1.5)
+	alab=c(1,2,5,10,25,50);lalab=log(alab)
+	plot(d$age,d$logalcm,xlim=c(12,17),ylim=range(lalab),type="n",
+	     axes=F,xlab="Age",ylab="Alcohol scene watching")
+	axis(side=1,12:16)
+	axis(side=2,at=lalab,labels=paste(alab,"h"),srt=90)
+	for(a in 12:16)
+	{
+		da=d$logalcm[d$age==a];n=length(da)
+		points(rep(a,n),da)
+		den=density(da,from=0)
+		lines(a+1.25*den$y,den$x)	
+	}
+	x=11:16
+	a=coef(o)
+	
+	lines(x,a[1]+a[2]+a[3]*x+a[6]+a[7]+a[8],col=2,lwd=3)
+	lines(x,a[1]+a[3]*x+a[7]+a[8],col=3,lwd=3,lty=2)
+	legend(15,log(2),c("Black girl drink and have an alcohol related item",
+	                     "Black girl do not drink and do not have an alcohol related item"),col=2:3,lwd=3,lty=1:2,bg="gray97",cex=0.4)
+```
+
