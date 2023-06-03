@@ -1,0 +1,454 @@
+---
+header-includes:
+- \usepackage{fontspec}
+output:
+   pdf_document:
+     include:
+       in_header: "preamble.tex"
+     latex_engine: xelatex
+---
+
+---
+title: "qbs120_ps5_gibran"
+author: "Gibran Erlangga"
+date: "10/14/2021"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+``` {r}
+# BiocManager::install("multtest")
+library(multtest)
+data(golub)
+gene1.values = golub[1,]
+gene1.values[1:5]
+```
+
+
+(a) What is the MLE of μ (μˆmle)?  
+``` {r}
+mle_mean <- mean(gene1.values)
+mle_mean
+```
+(b) Is your estimate from part a) unbiased? Justify.  
+Yes, as this is the output of MLE.
+
+(c) Is your estimate from part a) consistent? Justify.  
+Yes, it is consistent because if follows the Method of Moments formula.
+
+(d) If you cannot assume the data are normally distributed, is your estimate from a) for
+E[X] = μ still valid?  
+Yes!
+
+(e) What is the MLE of σ2 (σˆ2 )?  
+``` {r}
+mle_var <- sum((gene1.values-mle_mean)^2 / length(gene1.values))
+mle_var
+```
+
+(f) Is your estimate from part e) unbiased? Justify.  
+Yes, because if follows the Method of Moments formula.
+
+(g) Is your estimate from part e) consistent? Justify.  
+No, because it needs to follow the distribution of its parent.
+
+(h) If you cannot assume the data are normally distributed, is your estimate from e) for V ar(X) = σ2 still valid?  
+No, because the variance will be different for every distribution.
+
+(i) What is the distribution of μˆmle? If you cannot assume the data are normally distributed, does this sampling distribution still hold?  
+It is a normal distribution, and yes, it still holds.
+
+(j) What is the MSE of the μˆmle estimate?  
+``` {r}
+mse <- sum(((gene1.values-mle_mean) / length(gene1.values))^2)
+mse
+```
+
+(k) Use the distribution of μˆmle to compute a 95% CI for μ. Assume that the σ2 = σˆ2.  
+``` {r}
+n <- length(gene1.values)
+abc <- qt(0.05/2, df=n-1)
+s <- sd(gene1.values)
+
+confidence_interval <- c(mle_mean - ((s*abc)/sqrt(n)), mle_mean + ((s*abc)/sqrt(n)))
+confidence_interval
+```
+
+## Question 2
+(Based on Rice 8.3) One of the earliest applications of the Poisson distribution was made by Student (1907) in studying errors made in counting yeast cells or blood corpuscles with a haemacytometer. In this study, yeast cells were killed and mixed with water and gelatin; the mixture was then spread on a glass and allowed to cool. Four different concentrations were used. Counts were made on 400 squares, and the data are summarized in the data.frame below. In this data.frame, each of the ”concen.*” columns records the number of squares associated with that concentration for which the number of counted cells equals the value in the ”cells” column.
+
+``` {r}
+yeast.counts = data.frame(cells=0:12,
+                          concen.1 = c(213,128,37,18,3,1,0,0,0,0,0,0,0),
+                          concen.2 = c(103,143,98,42,8,4,2,0,0,0,0,0,0),
+                          concen.3 = c(75,103,121,54,30,13,2,1,0,1,0,0,0),
+                          concen.4 = c(0,20,43,53,86,70,54,37,18,10,5,2,2))
+```
+
+a) Compute the MLE estimate of the parameter $\lambda$ for each of the four sets of data.
+
+The MLE for $\lambda$ in Poisson RV $X$ is defined by the sample mean:
+
+$$\hat{\lambda} = \bar{X}$$
+Here's the implementation of lambda calculation in R:
+``` {r}
+n = 400
+cells = 0:12
+
+get_lambda <- function(cells, concen, n) {
+  return(sum(cells*concen)/n)
+}
+
+lambda_concen <- c()
+
+lambda_concen[1] <- get_lambda(cells, yeast.counts$concen.1, n)
+lambda_concen[2] <- get_lambda(cells, yeast.counts$concen.2, n) 
+lambda_concen[3] <- get_lambda(cells, yeast.counts$concen.3, n) 
+lambda_concen[4] <- get_lambda(cells, yeast.counts$concen.4, n)
+
+cat(paste("lambda value for concentration 1 is", lambda_concen[1], "\n",
+          "lambda value for concentration 2 is", lambda_concen[2], "\n",
+          "lambda value for concentration 3 is", lambda_concen[3], "\n",
+          "lambda value for concentration 4 is", lambda_concen[4], "\n"
+            ))
+```
+
+b) Approximate the theoretical standard error of the $\hat{\lambda}$ values computed for Problem 1 part a). Do not use simulation.  
+Formula is ${\sqrt{\hat{\lambda}} \over 400}$. Therefore,
+``` {r}
+std_error <- c()
+std_error[1] <- sqrt(lambda_concen[1] / 400)
+std_error[2] <- sqrt(lambda_concen[2] / 400)
+std_error[3] <- sqrt(lambda_concen[3] / 400)
+std_error[4] <- sqrt(lambda_concen[4] / 400)
+
+cat(paste("standard error for concentration 1 is", std_error[1], "\n",
+          "standard error for concentration 2 is", std_error[2], "\n",
+          "standard error for concentration 3 is", std_error[3], "\n",
+          "standard error for concentration 4 is", std_error[4], "\n"
+            ))
+```
+
+
+
+c) For the $\hat{\lambda}$ values compute for Problem 1 part a), estimate the standard error using the parametric bootstrap. How do these values compare to the approximate theoretical values? Do these results match your expectations?  
+``` {r}
+set.seed(20)
+n_sample = 10000
+N = 400
+
+for (i in 1:n_sample) {
+  sim_1 <- rpois(n_sample, lambda_concen[1])
+  sim_2 <- rpois(n_sample, lambda_concen[2])
+  sim_3 <- rpois(n_sample, lambda_concen[3])
+  sim_4 <- rpois(n_sample, lambda_concen[4])
+}
+
+mean_sim_1 = c()
+mean_sim_2 = c()
+mean_sim_3 = c()
+mean_sim_4 = c()
+
+for (i in 1:N) {
+  s_1 <- mean(sample(sim_1, N))
+  mean_sim_1 <- append(mean_sim_1, s_1)
+  s_2 <- mean(sample(sim_2, N))
+  mean_sim_2 <- append(mean_sim_2, s_2)
+  s_3 <- mean(sample(sim_3, N))
+  mean_sim_3 <- append(mean_sim_3, s_3)
+  s_4 <- mean(sample(sim_4, N))
+  mean_sim_4 <- append(mean_sim_4, s_4)
+}
+
+cat(paste("estimated standard error for concentration 1 is", sd(mean_sim_1), "\n",
+          "estimated standard error for concentration 2 is", sd(mean_sim_2), "\n",
+          "estimated standard error for concentration 3 is", sd(mean_sim_3), "\n",
+          "estimated standard error for concentration 4 is", sd(mean_sim_4), "\n"
+            ))
+```
+ 
+d) Find an approximate 95% confidence interval for each estimate.  
+
+Formula for getting an approximation of confidence interval for $\lambda$ of Poisson distribution is denoted as:
+$$\left[\hat{\lambda} - z\sqrt{\hat{\lambda} \over n}, \hat{\lambda} + z\sqrt{\hat{\lambda} \over n}\right]$$
+
+with:  
+- $\hat{\lambda}$ is sample mean,
+- n = 400,
+- $z$ is equal to $\alpha/2$ (area under the density curve of a standard normal distribution)
+
+We want 95% confidence interval, so we know that $\alpha$ = 0.05.
+
+We know from the reference table that for 95% CI, the value for z is 1.96.
+
+Plugging in all the numbers into the above equation, we get:
+``` {r 95% CI for all concentrations}
+get_ci_upper <- function(lambda, z, n) {
+  return(lambda + z*sqrt(lambda/n))
+}
+
+get_ci_lower <- function(lambda, z, n) {
+  return(lambda - z*sqrt(lambda/n))
+}
+
+concen_ci_upper <- c()
+concen_ci_lower <- c()
+
+# concen 1
+concen_ci_lower[1] <- round(get_ci_lower(lambda_concen[1], 1.96, n), digit=3)
+concen_ci_upper[1] <- round(get_ci_upper(lambda_concen[1], 1.96, n), digit=3)
+
+# concen 2
+concen_ci_lower[2] <- round(get_ci_lower(lambda_concen[2], 1.96, n), digit=3)
+concen_ci_upper[2] <- round(get_ci_upper(lambda_concen[2], 1.96, n), digit=3)
+
+# concen 3
+concen_ci_lower[3] <- round(get_ci_lower(lambda_concen[3], 1.96, n), digit=3)
+concen_ci_upper[3] <- round(get_ci_upper(lambda_concen[3], 1.96, n), digit=3)
+
+# concen 4
+concen_ci_lower[4] <- round(get_ci_lower(lambda_concen[4], 1.96, n), digit=3)
+concen_ci_upper[4] <- round(get_ci_upper(lambda_concen[4], 1.96, n), digit=3)
+
+
+cat(paste("95% confidence interval for lambda value in concentration 1 are", 
+          concen_ci_lower[1], "and", concen_ci_upper[1], "\n",
+          "95% confidence interval for lambda value in concentration 2 are", 
+          concen_ci_lower[2], "and", concen_ci_upper[2], "\n",
+          "95% confidence interval for lambda value in concentration 3 are", 
+          concen_ci_lower[3], "and", concen_ci_upper[3], "\n",
+          "95% confidence interval for lambda value in concentration 4 are", 
+          concen_ci_lower[4], "and", concen_ci_upper[4], "\n"
+          ))
+```
+
+e) Compare observed and expected counts.
+The PDF of Poisson RV $X$ with $\lambda > 0$ is defined as:
+
+$$P(X = k) = {\lambda^{k} \over k!}e^{-\lambda}$$
+
+Observation would be:
+``` {r observation counts}
+get_expected_count <- function(lambda, k, n) {
+  return(round((lambda^k / factorial(k)) * exp(-lambda) * n, digit=2))
+}
+
+get_exp_1 <- c()
+get_exp_2 <- c()
+get_exp_3 <- c()
+get_exp_4 <- c()
+
+for (i in cells) {
+  get_exp_1 <- append(get_exp_1, get_expected_count(lambda_concen[1], i, n))
+  get_exp_2 <- append(get_exp_2, get_expected_count(lambda_concen[2], i, n))
+  get_exp_3 <- append(get_exp_3, get_expected_count(lambda_concen[3], i, n))
+  get_exp_4 <- append(get_exp_4, get_expected_count(lambda_concen[4], i, n))
+}
+
+concen_1_observed <- yeast.counts$concen.1
+concen_1_expected <- get_exp_1
+concen_2_observed <- yeast.counts$concen.2
+concen_2_expected <- get_exp_2
+concen_3_observed <- yeast.counts$concen.3
+concen_3_expected <- get_exp_3
+concen_4_observed <- yeast.counts$concen.4
+concen_4_expected <- get_exp_4
+
+data.frame(concen_1_observed, 
+           concen_1_expected, 
+           concen_2_observed, 
+           concen_2_expected,
+           concen_3_observed, 
+           concen_3_expected, 
+           concen_4_observed, 
+           concen_4_expected)
+```
+
+## Question 3
+(Based on Rice 8.9) How would you respond to the following argument? This talk of sampling distributions is ridiculous! Consider Example A of Section 8.4. The experimenter found the mean of the number of fibers to be 24.9. How can this be a ”random variable” with an associated ”probability distribution” when it’s just a number? The author of this book is guilty of deliberate mystification!
+
+In this particular case, the sample we use is 23 fibers. The sample mean of it is a random variable, as this is calculated from the sample of fibers we collected from the factory. If we were to repeat the sampling process again, there is a very small chance that the value for sample mean to be 24.9, as this is drawn from a random variable. We can never guarantee that the sample mean value to be 24.9 before we start sampling the data.
+
+
+## Question 4
+(Based on Rice 8.13) In Example D of Section 8.4, the MOM estimate was found to be $\hat{\alpha} = 3\bar{X}$. In this problem, you will consider the sampling distribution of $\hat{\alpha}$.
+
+(a) Show that $E[\hat{\alpha}] = \alpha$, i.e., the estimate is unbiased.
+By the linearity of expectation and the fact that $E(X_{i}) = {\alpha \over 3}$ for i {1, 2, 3, ..., n}, we have:
+\begin{align*}
+E(\hat{\alpha}) &= E(3 \cdot \bar{X}) \\
+&= 3 \cdot E(\bar{X}) \\
+&= {3 \over n} \sum_{i=1}^{n}E(X_{i})\\
+&= {3 \over n} \sum_{i=1}^{n}{\alpha \over 3}\\
+&= \alpha
+\end{align*}
+
+Therefore, the estimate $\hat{\alpha}$ is unbiased for $\alpha$.
+
+(b) Show that $Var(\hat{\alpha}) = (3-\alpha^2)/n$. Hint: What is $Var(\bar{X})$?
+
+We know that:
+
+$$Var(X_{1}) = E(X_{1}^{2}) - E(X_{1})^2$$
+with density function of $X_{1}$ as:
+
+$$f(x) = {1 + \alpha x \over 2}, x \in [-1, 1]$$
+
+for $x \in [-1, 1]$:
+\begin{align*}
+E(X_{1}^{2}) &= \int_{-1}^{1}x^2 \cdot f(x)~dx \\
+&= \int_{-1}^{1}x^2 \cdot {1 + \alpha x \over 2}~dx \\
+&= {1 \over 2}\int_{-1}^{1}x^2~dx + {\alpha \over 2}\int_{-1}^{1}x^3~dx \\
+&= {1 \over 2}({x^3 \over 3})|_{-1}^{1} + {1 \over 2}({x^4 \over 4})|_{-1}^{1} \\
+&= {1 \over 3}
+\end{align*}
+
+Therefore, $Var(X_{1}$ is:
+\begin{align*}
+Var(X_{1}) &= {1 \over 3} - ({\alpha \over 3})^2 \\
+&= {3-\alpha^2 \over 9}
+\end{align*}
+
+The fact that $X_{i}$ are independent, then:
+\begin{align*}
+Var(\hat{\alpha}) &= Var(3 \cdot \bar{X}) = 9 \cdot Var(\bar{X}) = {9 \over n^2} \sum_{i=1}^{n} Var(X_{i}) \\
+&= {9 \over n^2} \sum_{i=1}^{n} {3-\alpha^2 \over 9} \\
+&= {9 \over n^2} \cdot n \cdot {3-\alpha^2 \over 9} \\
+&= {3-\alpha^2 \over n}
+\end{align*}
+
+(c) Use the CLT to deduce that a normal approximation to the sampling distribution of $\hat{\alpha}$. According to this approximation, if n = 20 and $\alpha$ = 1, what is the $P(\hat{\alpha} > 0.5)$? Define in terms of $\Phi()$, the CDF for the standard normal.
+CLT says that for a large value of $n$,
+$${\hat{\alpha} - E(\hat{\alpha}) \over \sqrt{Var(\hat{\alpha})}}\stackrel{D}{\approx} N(0, 1)$$
+Plugging the results of mean and variance of $\hat{\alpha}$ from previous questions, and the fact that it is approximately distributed on standard normal RV Z, we have:
+$$\hat{\alpha} \stackrel{D}{\approx} N(\alpha, {3 - \alpha^2 \over n})$$
+Therefore, 
+
+\begin{align*}
+P(|\hat{\alpha}| > 0.5) &= 1 - P(|\hat{\alpha}| \le 0.5) \\
+&= 1 - P(-0.5 \le \hat{\alpha} - \alpha \le 0.5) \\
+&= 1 - P({-0.5 \over \sqrt{{3-\alpha^2 \over n}}} \le {\hat{\alpha} - \alpha \over \sqrt{{3-\alpha^2 \over n}}} \le {0.5 \over \sqrt{{3-\alpha^2 \over n}}}) \\
+&\approx 1 - [\Phi({0.5 \over \sqrt{{3-\alpha^2 \over n}}}) - \Phi(-{0.5 \over \sqrt{{3-\alpha^2 \over n}}})] \\
+&= 1 - [\Phi({0.5 \over \sqrt{{3-\alpha^2 \over n}}}) - 1 + \Phi(-{0.5 \over \sqrt{{3-\alpha^2 \over n}}})] \\
+&= 2 - 2\Phi({0.5 \over \sqrt{{3-\alpha^2 \over n}}}) \\
+\end{align*}
+
+Plug $n = 20$ and $\alpha = 1$ to the formula,
+\begin{align*}
+P(|\hat{\alpha}| > 0.5) &= 2 - 2\Phi({0.5 \over \sqrt{{3-\alpha^2 \over n}}}) \\
+&= 2 - 2\Phi(1.58) \\
+&= 2 - 2\Phi(1.58) \\
+&= 2 - 2 \cdot 0.9429 \\
+&= 0.1142
+\end{align*}
+
+
+## Question 5
+(Based on Rice 8.58) For a population in Hardy-Weinberg equilibrium, alleles occur with the following frequencies:
+
+$$AA: (1 − \theta)^2$$
+$$Aa: 2\theta(1−\theta)$$
+$$aa: \theta^22$$
+
+For a specific sample of 190 people, the haptoglobin types occurred as follows:
+\begin{align*}
+X1 &: Hp1−1 : 10 \\ 
+X2 &: Hp1−2 : 68 \\
+X3 &: Hp2−2 : 112
+\end{align*}
+Assume the haptoglobin genotype for this population is in Hardy-Weinberg equilibrium.  
+
+(a) Find the mle of $\theta$.
+
+We know that n = 190.
+
+Likelihood function:
+
+\begin{align*}
+likelihood(\theta) &= P(X = 1|\theta)^{10}P(X = 2|\theta)^{68}P(X = 3|\theta)^{112} \\
+&= (1 - \theta)^{20}(2\theta~(1 - \theta))^{68}(\theta)^{224} \\
+&= (1 - \theta)^{88}2^{68}\theta^{292} \\
+\end{align*}
+
+apply natural logarithm on both ends, we get:
+\begin{align*}
+l(\theta) &= ln(lik(\theta)) \\
+&= 68~ln(2) + 292~ln(\theta) + 88~ln(1 - \theta)
+\end{align*}
+
+Derivative of l = 0 to get the max value:
+\begin{align*}
+l'(\theta) &= 0 \\
+{292 \over \theta} - {88 \over 1-\theta} &= 0 \\
+292 - 380\theta &= 0 \\
+\theta &= 0.768
+\end{align*}
+
+second derivative of l:
+\begin{align*}
+l''(\theta) = -{292 \over \theta^{2}} - {88 \over (1-\theta)^{2}} < 0
+\end{align*}
+
+which value is always negative, hence $l$ is a concave function.
+
+Therefore, $\tilde{\theta} = 0.7684$.
+
+(b) Find the asymptotic variance of the mle.
+Estimating variance of $\tilde{\theta}$:
+
+$$Var(\tilde{x}) \approx {1 \over n~.~I(\theta)}$$
+
+with $I(\theta)$ as:
+
+$$I(\theta) = E([\pd \theta~ln~f(X|\theta)]^{2})$$
+Therefore,
+\begin{align*}
+Var(\tilde{\theta}) &= {1 \over E([l'(\theta)]^{2})} \\
+&= {1 \over E(l''(\theta))} \\
+&= {1 \over E(-{292 \over \theta^{2}} -{88 \over (1-\theta)^{2}})} \\
+Var(\tilde{\theta}) &\approx {1 \over {292 \over \theta^{2}} + {88 \over (1-\theta)^{2}}} \\
+\end{align*}
+
+(c) Find an approximate 99% confidence interval for $\theta$.
+
+Based on the asymptotic normality of MLE, CI of $\theta$ is:
+
+$$\left[\tilde{\theta} - z~.s_{\tilde{\theta}}, \tilde{\theta} + z~.s_{\tilde{\theta}}\right]$$
+with $\tilde{\theta}$ as MLE of $\theta$ and $s_{\tilde{\theta}}$ as the estimated standard error of $\tilde{\theta}$.
+
+For 99% CI, $\alpha = 0.01$. From the reference table, we know that the value for z is 2.58.
+
+Then, we get the value for estimated variance of $s_{\tilde{\theta}}$ using the result we get in b). Plugging the numbers in, we get:
+
+\begin{align*}
+Var(\tilde{\theta}) &= {1 \over E(-{292 \over 0.7684^{2}} -{88 \over (1-0.7684)^{2}})} \\
+s_{\tilde{\theta}}^{2} &= {1 \over 2135.6} \\
+&= 0.000468
+\end{align*}
+
+Therefore, the estimated standard error of $\tilde{\theta}$ is:
+$$s_{\tilde{\theta}} = \sqrt{0.000468} = 0.0216$$
+Lastly, plug the numbers into the CI formula, we get:
+$$[0.7684 - 2.58 \cdot 0.0216, 0.7684 + 2.58 \cdot 0.0216] = [0.7127, 0.8241]$$
+
+(d) Use the parametric bootstrap to estimate the sampling distribution of the MLE of $\theta$. Plot this distribution along with the asymptotic distribution. How does the shape of the bootstrap sampling distribution compare to the asymptotic distribution?
+
+``` {r}
+
+```
+
+(e) Use the bootstrap sampling distribution to estimate the variance of the MLE of $\theta$. How does the bootstrap variance compare with the asymptotic variance?
+
+``` {r}
+
+```
+
+(f) Compute the 99% CI for $\theta$ using the bootstrap percentile approach. How does this compare with the CI computed in part c)?
+``` {r}
+
+```

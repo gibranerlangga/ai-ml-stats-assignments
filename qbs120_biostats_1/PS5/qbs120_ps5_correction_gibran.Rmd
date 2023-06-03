@@ -1,0 +1,109 @@
+---
+header-includes:
+- \usepackage{fontspec}
+output:
+   pdf_document:
+     latex_engine: xelatex
+---
+
+---
+title: "qbs120_ps5_correction_gibran"
+author: "Gibran Erlangga"
+date: "10/22/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+a) My original solution was correct.
+b) My original solution was correct.
+c) My original solution was correct.
+d) My original solution was correct.
+e) My original solution was correct.
+f) No, the MLE for $\alpha^2$ is not unbiased. The unbiased estimator uses $1/(n − 1)$ rather than $1/n$. However, the MLE is asymptotically unbiased, i.e., as n → $\infty$, $1/(n − 1)$ → $1/n$. All MLEs are asymptotically unbiased.
+g) Yes, it is consistent. This follows from being an MLE and MOM estimator.
+h) Yes, it is still a valid (though biased) estimator of the variance of iid RVs. In the general case, it is the MOM estimator but not necessarily the MLE.
+i) My original solution was correct.
+j) My original solution was correct.
+k) My original solution was correct.
+
+## Question 2
+a) My original solution was correct.
+b) My original solution was correct.
+c) My original solution was correct.
+d) My original solution was correct.
+e) My original solution was correct.
+
+## Question 3
+My original solution was correct.
+
+## Question 4
+a) My original solution was correct.
+b) My original solution was correct.
+c) Because $\hat{\alpha} = 3\bar{X}$, it is a function of the average of independent. By CLT, it converges to a normal distribution. Utilizing expectation and variance from previous questions, we can approximate the distribution of $\hat{\alpha}$:
+$\hat{\alpha}  N(1, 0.1)$
+
+Apply standardization, we get:
+$\sqrt{10}(\hat{\alpha}-1) N(0, 1)$
+
+We are tasked to get $P(\alpha > 0.5)$:
+
+\begin{align*}
+P(\alpha > 0.5) &= 1 - P(\alpha < 0.5)\\
+&= 1 - P(\sqrt{10}(\hat{\alpha}-1) < \sqrt{10}(0.5-1))\\
+&= 1 - P(\sqrt{10}(\hat{\alpha}-1) < -0.5\sqrt{10})\\
+&= 1 - \Phi(-0.5\sqrt{10})
+\end{align*}
+
+get the result using R:
+``` {r}
+1-pnorm(-0.5*sqrt(10))
+```
+
+
+## Question 5
+a) My original solution was correct.
+b) My original solution was correct.
+c) My original solution was correct. 
+d) This is very similar to the example from the lecture. For the parametric bootstrap, we will use the MLE estimate of $\theta$ to generate multiple data sets each containing 190 members and recompute the MLE for each simulated sample. Using $\hat\theta_{mle} = 0.768$, we get the following probabilities for the different multinomial categories:
+Hp1-1: (1 − $\theta$)^2 = 0.054
+Hp1-2: 2$\theta$(1 − $\theta$) = 0.356
+Hp2-2: $\theta^2$ = 0.589
+
+In order to compute the MLE for each of the generated samples, we need an expression for the MLE in terms of the counts of the three groups. From lecture, we know this is:
+
+$$\hat\theta_{mle} = (2*n3 + n2) / (2*(n1+n2+n3))$$
+``` {r}
+var.theta.hat = (0.768*(1-.768))/(2*190)
+
+sim.samples = rmultinom(10000, size=190, prob=c(0.054, 0.356, 0.589))
+sim.samples[, 1:10]
+
+thetaMLE <- function(n1, n2, n3) {
+  return((2*n3 + n2) / (2*(n1+n2+n3)))
+}
+
+theta.hats <- apply(sim.samples, 2, function(x) {
+  return(thetaMLE(x[1], x[2], x[3]))
+})
+
+plot(density(theta.hats), xlim=c(0.7, 0.9))
+x.vals = seq(from=0.7, to=0.9, by=0.001)
+asym.density = dnorm(x.vals, mean=0.768, sd=sqrt(var.theta.hat))
+points(x.vals, asym.density, type="l", lty="dashed")
+```
+e) 
+``` {r}
+var.theta.hat
+(var.theta.hat.bootstrap = var(theta.hats))
+```
+f) 
+``` {r}
+(theta.005 = sort(theta.hats, decreasing=F)[50])
+(theta.995 = sort(theta.hats, decreasing=F)[9950])
+(lower.CI = .768 + qnorm(.005)*sqrt(var.theta.hat))
+(upper.CI = .768 + qnorm(.995)*sqrt(var.theta.hat))
+```

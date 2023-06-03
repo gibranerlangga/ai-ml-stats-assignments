@@ -1,0 +1,101 @@
+---
+title: "qbs120_ps6_correction_gibran"
+author: "Gibran Erlangga"
+date: "10/29/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+My original solution was correct.
+
+## Question 2
+My original solution was correct.
+
+## Question 3
+My original solution was correct.
+
+## Question 4
+My original solution was correct.
+
+## Question 5
+My original solution was correct.
+
+## Question 6
+a) 
+``` {r}
+biased.sd = function(x) {
+  biased.var = mean((x-mean(x))^2)
+  return(sqrt(biased.var))
+  }
+
+coef.of.skewness = function(x) {
+  b.1 = mean((x - mean(x))^3)/biased.sd(x)^3
+  return (b.1)
+}
+
+# check for correctness
+library(moments)
+
+x = rnorm(10)
+coef.of.skewness(x)
+
+skewness(x)
+```
+
+b) 
+``` {r}
+B=10000
+n=100
+
+sim.data = matrix(rnorm(B*n), nrow=B, ncol=n)
+sim.b.1 = apply(sim.data, 1, coef.of.skewness)
+
+par(mfrow=c(2,1))
+hist(sim.b.1)
+plot(density(sim.b.1))
+```
+``` {r}
+qqnorm(sim.b.1)
+qqline(sim.b.1, distribution=qnorm, col="red")
+```
+
+``` {r}
+test.data = matrix(rnorm(1000*100), nrow=1000, ncol=100)
+test.b.1 = apply(test.data, 1, coef.of.skewness)
+ranked.sim.b.1 = sort(sim.b.1)
+
+simPVal = function(x, ranked.sim.values) {
+  n = length(ranked.sim.values)
+  smaller.vals =which(ranked.sim.values <= x)
+  if (length(smaller.vals) == 0) {
+    alpha.low = 0
+    } else{
+      alpha.low = length(smaller.vals)/n
+    }
+  larger.vals = which(ranked.sim.values >= x)
+  if (length(larger.vals) == 0) {
+    alpha.hi = 0
+  } else {
+    alpha.hi = length(larger.vals)/n
+  }
+  p.val = 2*min(alpha.low, alpha.hi)
+  return(p.val)
+}
+
+p_val = sapply(test.b.1, function(x) simPVal(x, ranked.sim.b.1))
+p_val[1:5]
+```
+
+d.
+``` {r}
+test.data = matrix(rpois(1000*100, lambda=2), nrow=1000, ncol=100)
+test.b.1 = apply(test.data, 1, coef.of.skewness)
+p.values = sapply(test.b.1, function(x) simPVal(x, ranked.sim.b.1))
+p.values[1:10]
+```
+
+

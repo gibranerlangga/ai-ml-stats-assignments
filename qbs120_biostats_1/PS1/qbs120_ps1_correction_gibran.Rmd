@@ -1,0 +1,252 @@
+---
+header-includes:
+- \usepackage{fontspec}
+output:
+   pdf_document:
+     latex_engine: xelatex
+---
+
+---
+title: "QBS120_PS1_Correction_Gibran"
+author: "Gibran Erlangga"
+date: "9/25/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problems for Rice, Chapter 1
+
+### Question 1
+my original solution was correct.
+
+### Question 2
+my original solution was correct.
+
+### Question 3
+Using the property A of the probability measures, we know that:  
+$$P(A) = 1 - P(A^C)$$
+with $P(A)$ as the probability of one of more defects, and   
+$P(A^C)$ as the probability of zero defect discovered  
+
+With the multiplication principle, we know that the number of ways to select zero defect is the multiplication of # of ways to select $m$ items from $n-k$ non-defects and the # of ways to select no items from $k$ defects. With the total number of outcomes of n choose m, the probability can be represented as  
+
+$$P(a \ge 1) = 1 - {{n-k \choose m} \over {n \choose m}}$$
+
+We need to find $m$ such that $P(a \ge 1) \ge 0.8$. We will perform a computation of $P(a \ge 1)$ in a range of $m$ given $n$ and $k$ values and select $m$ that satisfies above formula.
+
+``` {r prob one defect}
+probAtLeastOneDefect = function(n, k ,m) {
+  prob = 1 - choose(n-k, m)/choose(n, m)
+  return(prob)
+}
+```
+
+#### a) n=1000, k=10
+``` {r q_3 point_a}
+
+m_val = 1:1000
+probs = probAtLeastOneDefect(1000, 10, m_val)
+(m = which(probs >= 0.8)[1])
+
+m_and_probs = data.frame(m_val, probs)
+m_and_probs[(m-2):m,]
+```
+so, $m$ = 148.  
+#### b) n=1000, k=100
+``` {r q_3 point_b}
+probs = probAtLeastOneDefect(1000, 100, m_val)
+(m = which(probs >= 0.8)[1])
+
+m_and_probs = data.frame(m_val, probs)
+m_and_probs[(m-2):m,]
+```
+so, $m$ = 16.
+
+### Question 4
+The coin flips are all independent, so two coins tossed three times is equal to one coin tossed six times. This is a conditional probability question, with formula as follows  
+$$P(A \mid B) = {P(A \cap B) \over P(B)}$$
+Since $A \subset B$, we know that $P(A \cap B) = P(A)$, hence  
+$$P(A \mid B) = {P(A \cap B) \over P(B)} = {P(A) \over P(B)}$$
+with total possible outcomes of $2^6 = 64$. Since each outcome is equally likely, we can say that $P(A)$ and $P(B)$ as # of possible ways to get A or B divided by total possible outcomes (64). We can also see all the outcomes and count how many of them belongs to A or B:
+``` {r all outcomes}
+all_outcomes = expand.grid(c1=c("H", "T"),
+                           c2=c("H", "T"),
+                           c3=c("H", "T"),
+                           c4=c("H", "T"),
+                           c5=c("H", "T"),
+                           c6=c("H", "T"))
+tail(all_outcomes)
+```
+
+#### a. What is the probability of two or more heads given that there was at least one head?  
+
+For easier calculation in the number of outcomes in B, we know that $B^C$ only includes a single outcome with all tails $(t, t, t, t, t, t)$, so  
+
+\begin{align*}
+P(B) &= 1 - P(B^C) \\
+P(B) &= 1 - {1 \over 64} \\
+P(B) &= {63 \over 64}
+\end{align*}
+
+Similar process goes for calculating $P(A)$. We know that $P(A^C)$ is essentially the probability of at least five tails. This includes $(t, t, t, t, t, t)$ and outcomes with a single head (which can occupy one of the six available spaces), so there are 6 + 1 = 7 total outcomes in $A^C$.In other words, $P(A) = 1 - P(A^C) = 1 - 7/64 = 57/64$ Therefore  
+$$P(A \mid B) = {P(A) \over P(B)} = {57/64 \over 63/64} = 57/63$$
+
+#### b. What is the probability of two or more heads given that there was at least one tail?  
+
+By symmetry, we know that $P(B)$ here has the exact probability as probability of having at least one head in the previous question, so $P(B) = 63/64$. For $A \cap B$, we know that only one event in A $(h, h, h, h, h, h)$ is not also in B so the number of outcomes in $A \cap B$ equals the number in A - 1 or 56, hence $P(A \cap B) = 56/64$. Thus  
+
+$$P(A \mid B) = {P(A) \over P(B)} = {56/64 \over 63/64} = 56/63$$
+
+### Question 5
+Let $A_{1}$ be the event that the first individual has 1 progeny at t = 1, let $A_{2}$ be the event that the first individual has 2 progeny at t = 1, let $A_{3}$ be the event that the first individual dies with no progeny at t = 1, and let $B$ be the event that all members of the population die at t = 2. We are asked to solve for $P(B)$. We can utilize the law of total probability to define $P(B)$ as follows  
+
+$$P(B) = P(A_{1} \mid B)P(A_{1}) + P(A_{2} \mid B)P(A_{2}) + P(A_{3} \mid B)P(A_{3})$$
+Note that this works since $A_{1}, A_{2}, A_{3}$ are disjoint and $A \cup B \cup C = \omega$. From the question we know that:  
+
+$P(A_{1}) = p$  
+$P(A_{2}) = 2p$  
+$P(A_{3}) = 1 - P(A_{1}) - P(A_{2}) = 1 - 3p$ (since $A_{3}$ is the complement of $A_{1} \cup A_{2}$)  
+$P(B \mid A_{3}) = 1$ (if the initial individual dies at t=1 then there can be no population at t=2)  
+
+To get $P(B \mid A_{1})$ and $P(B \mid A_{2})$, we know that B requires that all progeny of the first individual die. Since each die with probability $1 - 3p$ and their deaths are independent, the probability that all die is $1 - 3p$ if $A_{1}$ happens and $(1 - 3p)^2$ if $A_{2}$ happens. Put all values into the original formula, we get:  
+
+\begin{align*}
+P(B) &= P(A_{1} \mid B)P(A_{1}) + P(A_{2} \mid B)P(A_{2}) + P(A_{3} \mid B)P(A_{3}) \\
+&= P(A_{1} \mid B)P(A_{1}) + P(A_{2} \mid B)P(A_{2}) + P(A_{3} \mid B)P(A_{3}) \\
+&= (1 - 3p)p + (1 - 3p)^22p + (1 - 3p) \\
+&= -15p^2 + 18p^3 + 1
+\end{align*}
+
+Additionally, we can also solve it numerically by computing the value of $p$ such that $P(B) = 0.5$ using R function polyroot().
+
+``` {r polyroot}
+roots = polyroot(c(0.5, 0, -15, 18))
+```
+
+``` {r}
+prob_B = function(x) {
+  return(1 - 15*x^2 + 18*x^3)
+}
+
+p_val = seq(from=0, to=1, by=0.05)
+p_B = sapply(p_val, function(x) {
+  return(prob_B(x))
+})
+
+names(p_B) = p_val
+
+p_B
+```
+## Problems for Rice, Chapter 2
+
+### Question 1
+my original solution was correct.
+
+### Question 2
+my original solution was correct.
+
+### Question 3
+Treating each message transmission as a Bernoulli RV with probability of the message succesfully delivered is $p$. For the majority decoder, we have independent transmissions so the number of successes is a binomial RV with n=3 and p. We will represent the number of successes for the majority decoder as binomial RV.
+
+The probability of successful transmission with the majority decoder, $P_{D}$, is:  
+\begin{align*}
+P_{D} &= P(X = 2) + P(X = 3) \\
+&= p_{X}(2) + p_{X}(3) \\
+&= {3 \choose 2}p^2(1-p)^{3-2} + {3 \choose 3}p^3(1-p)^{3-3} \\
+&= ep^2(1-p) + p^3
+\end{align*}
+
+We want to get the value of $p$ such that $p < P_{D}$ with both $p$ and $P_{D}$ bound between 0 and 1.
+
+\begin{align*}
+p &< 3p2(1-p) + p^3 \\
+0 &< -2p^3 + 3p^2 - p \\
+0 &< -2p^2 + 3p - 1 \\
+0 &< (-2p+1)(p-1)
+\end{align*}
+
+From the result above, we get the value of $p$ to be either ${1 \over 2}$ or $1$. The possible solution ranges are $p < 0.5$ or $0.5 < p < 1$.
+Of these results, only p > 0.5 satisfies the inequality.
+So, the 2 out of 3 majority decoder is superior to direct transmission for p > 0.5.
+
+Validating through visualization in R:
+``` {r}
+p = seq(from=0, to=1, by=0.01)
+maj_decoder = sapply(p, function(x) {
+  return(3*x^2*(1-x) + x^3)
+})
+
+plot(p, maj_decoder, type="b")
+abline(coef = c(0, 1), col="red")
+abline(v=0.5, lty="dashed")
+```
+
+### Question 4
+#### a. Find c.  
+
+my original solution was correct.
+
+#### b. Find the CDF.  
+
+By definition, the CDF for X is:
+\begin{align*}
+F_{x}(x) &= \int_{-\infty}^{\infty} f_{X}(u)du \\
+&= \int_{0}^{x} {3 \over 20}(u^2 + 2u)du \\
+&= {3 \over 20}[{u^3 \over 3} + u^2]_0^x \\
+&= {3 \over 20}({x^3 \over 3} + x^2) 
+\end{align*}
+
+CDF for $x < 0$ is 0 and for $x > 2$ is 1. So, can express the CDF as:  
+
+#### c. What is $P(0.1 \le x \le 0.5)$?
+This can be represented as the difference of CDF values at 0.5 and 0.1:  
+\begin{align*}
+P(0.1 \le x \le 0.5) &= F_{X}(0.5) - F_{X}(0.1) \\
+&= {3 \over 20}({0.5^3 \over 3} + 0.5^2 - {0.1^3 \over 3} - 0.1^3)
+\end{align*}
+
+Computing the result through R:
+``` {r P_1_5}
+prob_0_1_0_5 = (3/20)*(0.5^3/3 + 0.5^2 - 0.1^3/3 - 0.1^2)
+```
+
+#### d. Plot the CDF.
+``` {r plot_cdf}
+x_val = seq(from=0, to=2, by=0.01)
+cdf_val = sapply(x_val, function(x) {
+          return((3/20)*(x^3/3 + x^2))
+})
+
+plot(x_val, cdf_val, type="l")
+```
+
+### Question 5
+#### a. What proportion of the population is over 6 ft tall?
+Question is asking us to find $P(X > 72)$. Using pnorm() we get:   
+``` {r}
+1- pnorm(72, mean=60, sd=4)
+```
+
+But based on the question, we need to transform the RV into standard normal $N(0, 1)$. We know that normal RV with parameters $\mu$ and std, $(X-$\mu$)/std$ is standard normal. Hence  
+
+\begin{align*}
+P_{X}(X>72) &= P_{X}((X-60)/4 > (72-60)/4) \\
+&= P_{Z}(Z > 3) \\
+&= 1 - \Phi(3)
+\end{align*}
+
+Then we can run the formula in R:
+``` {r}
+1 - pnorm(3)
+```
+
+#### b. What is the distribution of heights if they are expressed in centimeters?  
+Do scaling transformation to centimeters:  
+$$N(60 * 2.54, 2.54^2 * 4^2) = N(152.4, 103.2256)$$
+
+#### c. In meters?  
+Do scaling transformation to centimeters:  
+$$N(60 * 0.0254, 0.0254^2 * 4^2) = N(1.524, 0.01032256)$$

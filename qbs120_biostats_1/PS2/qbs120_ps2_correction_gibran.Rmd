@@ -1,0 +1,144 @@
+---
+title: "qbs120_ps2_correction_gibran"
+author: "Gibran Erlangga"
+date: "9/30/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+a. my original solution was correct.
+b. my original solution was correct.
+c. my original solution was correct.
+d. I had a typo on my original solution. Here's the correct one:  
+The conditional density of Y|X, defined for $0 \le y \le x$, is:
+\begin{align*}
+f_{Y|X}(y|x) &= {f_{X,Y}(x, y) \over f_{X}(x)} \\
+&= {{xy \over 2} \over {x^3 \over 4}} \\
+&= {2xy \over x^3} \\
+&= {2y \over x^2}
+\end{align*}
+
+The conditional density of X|Y, defined for $y \le x \le 2$, is:
+\begin{align*}
+f_{X|Y}(x|y) &= {f_{X,Y}(x, y) \over f_{Y}(y)} \\
+&= {{xy \over 2} \over y-{y^3 \over 4}} \\
+&= {2xy \over 4y-y^3} \\
+&= {2x \over 4-y^2}
+\end{align*}
+
+## Question 2
+As a standard uniform RV, we know that the density of $X_{1}$ is:  
+$$f_{X_{1}(x_{1})} = 1, 0 \le x_{1} \le 1$$
+We are also told that the conditional density of $X_{2}$ is U($X_{1}$, 2):
+$$f_{X_{1}X_{2}(x_{1}, x_{2})} = f_{X_{1}}(x_{1}f_{X_{2}}(x_{2}|x_{1}), ~0 \le x_{1} \le x_{2} \le 2$$
+The joint density can be found directly from these by definition:
+
+\begin{align*}
+f_{X_{1}X_{2}(x_{1}, x_{2})} &= f_{X_{1}}(x_{1}f_{X_{2}}(x_{2}|x_{1}) \\
+&= 1 * 1/(2 - x{1}) \\
+&= 1/(2-x_{1}), with ~0 \le x_{1} \le 1 and x_{1} \le x_{2} \le 2
+\end{align*}
+
+## Question 3
+optional
+
+## Question 4
+my original solution was correct.
+
+## Question 5
+We know that the expectation function g(X) for a continuous RV is:
+$$E[g(X)] = \int_{-\infty}^{\infty}g(x)f(x)~dx$$
+with $f(x) = {1 \over b-a} = {1 \over 4-1} = {1 \over 3}$  
+
+In this question, $g(X) = 1/X$, with $1 \le X \le 4$, so the function becomes:
+
+\begin{align*}
+E[1/X] &= \int_{1}^{4} {1 \over X}f(x)~dx \\
+&= \int_{1}^{4} {1 \over 3X}~dx \\
+&= [ln(x)/3]_{1}^{4} \\
+&= ln(4)/3
+\end{align*}
+
+to get ${1 \over E[X]}$, we need to compuite the expectation of X:
+
+\begin{align*}
+E[X] &= \int_{1}^{4}{X}f(x)~dx \\
+&= \int_{1}^{4}{x \over 3}~dx \\
+&= [x^2/6]_{1}^{4} \\
+&= 16/6 - 1/6 \\
+&= 15/6 \\
+&= 2.5
+\end{align*}
+
+Thus,
+$$1/E[X] = 0.4$$
+So, $E[1/X] \neq 1/E[X]$
+
+## Question 6
+### a. Show that $E[Z] = \mu$
+We want to find the expectation of a linear function of RVs. With jointly distributed RVs $X_{1}, X_{2}, ..., X_{n}$ and $Y = a \sum_{i=1}^{n} b_{i}X_{i}$, E[Y] is a linear function of the $E[X_{i}]$ (expectation of sum is sum of expectations):
+$$E[Y] = a \sum_{i=1}^{n}b_{i}E[X_{i}]$$
+Plugging in $Z = \alpha X + (1 - \alpha)Y$, we get:
+\begin{align*}
+E[Z] &= \alpha E[X] + (1-\alpha)E[Y] \\
+&= \alpha \mu + (1-\alpha)\mu \\
+&= \mu
+\end{align*}
+
+### b. If X and Y are not independent, what is $E[Z]$?
+The result is the same ($E[Z] = \mu$) since Theorem A holds regardless of whether the RVs are independent or not.
+
+### c. What is Var(Z)? Does this result hold if X and Y are not independent?
+my original solution was correct.
+
+### d. Find $\alpha$ in terms of $\sigma X$ and $\sigma Y$ to minimize Var(Z).
+my original solution was correct.
+
+### e. Under what circumstances is it better to use the average (X + Y)/2 than either X or Y alone?
+Note that (X+Y)/2 is Z with $\alpha = 1/2$, and the expected value is the same in all cases, per the result from part a). So, the only difference will be the variance and a smaller variance is typically desirable (less uncertainty in the outcome). Using the result for Var(Z) from part b), we know that the variance when $\alpha$ = 0.5 is:
+
+\begin{align*}
+Var(Z) &= \alpha^2\sigma^2_{X} + (1 - 2\alpha + \alpha^2)\sigma^2_{Y} \\
+&= \sigma^2_{X}/4 + (1 - 1 + 1/4)\sigma^2_{Y} \\
+&= \sigma^2_{X}/4 + \sigma^2_{Y}/4
+\end{align*}
+
+When is this less than $Var(X) = \sigma^2_{X}$? In that case, we would rather use Z than X alone to minimize the variance:
+
+\begin{align*}
+\sigma^2_{X}/4 + \sigma^2_{Y}/4 &< \sigma^2_{X} \\
+{3\sigma^2_{X} \over 4} &> \sigma^2_{Y}/4 \\
+{\sigma^2_{X} \over \sigma^2_{Y}} > 1/3
+\end{align*}
+
+When would we prefer to use Z vs Y alone? That will be when $Var(Z) < Var(Y)$. By symmetry, we know that will be ${\sigma^2_{X} \over \sigma^2_{Y}} > 1/3$ or ${\sigma^2_{Y} \over \sigma^2_{X}} < 3$.
+
+Combining these inequalities yield us:
+
+$$1/3 < {\sigma^2_{X} \over \sigma^2_{Y}} < 3$$
+
+## Question 7
+### get E[XY]
+If X and Y are independent, then E[XY] = E[X]E[Y]:
+$$E[XY] = E[X]E[Y] = \mu_{X}\mu_{Y}$$
+
+### get Var(XY)  
+By definition, here's the formula:
+$$Var(XY) = E[(XY)^2] - E[XY]^2$$
+We understand that $E[XY] = E[X]E[Y]$. To find $E[(XY)^2] = E[X^2Y^2]$, remember that functions of independent RV are also independent. So, E[X^2Y^2] = E[X^2]E[Y^2]. So,  
+
+\begin{align*}
+Var(XY) &= E[X^2]E[Y^2] - (E[X]E[Y])^2 \\
+&= E[X^2]E[Y^2] - E[X]^2E[Y]^2
+\end{align*}
+
+$E[X]^2$ and $E[Y]^2$ are just squares of the marginal expectations, so these are okay to include. However, what to do with $E[X^2]E[Y^2]$? The trick here is to recognize that we can re-express $E[X^2]$ as $Var(X) + E[X]^2$, which includes just marginal variance and expectation terms. Using the $\mu$ and $\sigma^2$ notation, this becomes:
+
+\begin{align*}
+Var(XY) &= (\sigma_{X}^{2} + \mu_{X}^{2})(\sigma_{Y}^{2} + \mu_{Y}^{2}) - \mu_{X}^{2}\mu_{Y}^{2} \\
+Var(XY) &= \sigma_{X}^{2}\sigma_{Y}^{2} + \sigma_{X}^{2}\mu_{Y}^{2} + \mu_{X}^{2}\sigma_{Y}^{2}
+\end{align*}

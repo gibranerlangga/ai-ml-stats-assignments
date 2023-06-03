@@ -1,0 +1,73 @@
+---
+title: "Problem Session 1"
+author: "Mirjana Stevanovic"
+date: "9/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\section{Chapter 1}
+
+17.
+
+```{r}
+#define the probability of accepting the lot as a function of k
+prob_accept <- function(k){
+  my_prob <- (choose(100-k,4))/choose(100,4)
+  return(my_prob)
+}
+
+#define possible values of k and compute probabilities of accepting for each
+ks <- 0:100
+accept <- prob_accept(ks)
+
+#plot
+percentages <- ks/100
+plot(percentages,accept,
+     xlab="Percentage of defective items in the lot",
+     ylab = "Probability that the lot is accepted")
+```
+
+Bonus
+```{r}
+#define the probability of accepting the lot as a function of k
+prob_accept <- function(k){
+  my_prob <- (choose(100-k,4)+k*choose(100-k,3))/choose(100,4)
+  return(my_prob)
+}
+
+#define possible values of k and compute probabilities of accepting for each
+ks <- 0:100
+accept <- prob_accept(ks)
+
+#plot
+percentages <- ks/100
+plot(percentages,accept,
+     xlab="Percentage of defective items in the lot",
+     ylab = "Probability that the lot is accepted")
+```
+
+\section{Chapter 2}
+
+66.
+
+```{r}
+#define F^-1
+inverse <- function(x,a) {
+  y <- (1-x)^(-1/a)
+  return(y)
+}
+
+#generate values from the standard uniform distribution
+U <- runif(100)
+
+#generate values with F cdf for different values of alpha
+X1 <- inverse(U,1) 
+X2 <- inverse(U,2)
+X10 <- inverse(U,10)
+```
+
+

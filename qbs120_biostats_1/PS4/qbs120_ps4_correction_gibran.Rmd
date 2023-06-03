@@ -1,0 +1,79 @@
+---
+header-includes:
+- \usepackage{fontspec}
+output:
+   pdf_document:
+     latex_engine: xelatex
+---
+
+---
+title: "qbs120_ps4_corrections_gibran"
+author: "Gibran Erlangga"
+date: "10/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+a) my original solution was correct.
+b) my original solution was correct.
+c) my original solution was correct.
+d) my original solution was correct.
+
+## Question 2
+a) my original solution was correct.
+b) my original solution was correct.
+
+## Question 3
+Optional
+
+## Question 4
+a) my original solution was correct.
+b) my original solution was correct.
+c) my original solution was correct.
+d) my original solution was correct.
+e) my original solution was correct.
+f) my original solution was correct.
+g) my original solution was correct.
+h) my original solution was correct.
+
+## Question 5
+(Based on Rice, Chapter 7, Problem 4) Two populations are surveyed with simple random sampling. A sample of size $n_{1}$ is used for population I, which has a population standard deviation of $\sigma_{1}$; a sample of size $n_{2} = 3n_{1}$ is used for population II, which has a population standard deviation of $\sigma_{2}$ = $2\sigma_{1}$.
+
+a) Ignoring the finite population correction, in which of the two samples would you expect the estimate of the population mean to be more accurate? Provide a mathematical justification for your answer.
+
+Based on the Law of Large Numbers, the best estimate of the population mean $\mu$ is the sample average, $\bar{X}$. The variance of $\bar{X}$ (i.e., the variance of its sampling distribution) is:
+
+$$Var(\bar{X}) = {\sigma^2 \over n}$$
+The most accurate variance estimate will be the estimate whose sampling distribution has the smallest variance.
+
+Ignoring the finite population correction, the variance of the estimate for population I is:
+$$Var(\bar{X}_{1}) = {\sigma^2 \over n_{1}}$$
+
+and the variance of the estimate for population II is:
+
+\begin{align*}
+Var(\bar{X}_{2}) &= {(s\sigma_{1})^2 \over 3 n_{1}} \\
+&= {(4\sigma_{1})^2 \over 3n_{1}} \\
+&= {(4 \over 3}~Var(\bar{X}_{1})
+\end{align*}
+
+Therefore, the estimate for $\mu$ for population I is more accurate than the estimate of $\mu$ for population II.
+
+b) my original solution was correct.
+c) my original solution was correct.
+
+## Question 6
+my original solution was correct.
+
+## Question 7
+a) my original solution was correct.
+b) my original solution was correct. 
+c) my original solution was correct.
+d) my original solution was correct.
+
+## Question 8
+Optional

@@ -1,0 +1,361 @@
+---
+header-includes:
+- \usepackage{fontspec}
+output:
+   pdf_document:
+     latex_engine: xelatex
+---
+
+---
+title: "qbs120_ps6_gibran"
+author: "Gibran Erlangga"
+date: "10/22/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+(Based on Rice 9.1) A coin is thrown independently 10 times to test the hypothesis that the
+probability of a heads is ${1 \over 2}$ vs the alternative that the probability is not ${1 \over 2}$. The test rejects if the number of observed heads is 0 or 10.
+
+(a) What is the significance level of the test?  
+
+From the question above, we know that:
+
+$$H_{0} : p = {1 \over 2}$$
+$$H_{1} : p \neq {1 \over 2}$$
+
+With decision function as:
+$$d(X) = 1, X \in \{0, 10\}$$
+$$d(X) = 0, X \in \{1, 2, 3, 4, 5, 6, 7, 8, 9\}$$
+Significance level $\alpha$ is defined as the expected value of decision function $d(X)$ under the probability law specified by $H_{0}$. Therefore,
+
+\begin{align*}
+\alpha &= E_{0}(d(X)) \\
+&= 1 \cdot P_{0}(X \in \{0, 10\}) + 0 \cdot P_{0}(X \in \{1, 2, .., 9\}) \\
+&= P_{0}(X \in \{0, 10\}) \\
+&= P_{0}(X = 0) + P_{0}(X = 10) \\
+&= \binom{10}{0} \cdot p^{0} \cdot (1-p)^{10-0} + \binom{10}{10} \cdot p^{10} \cdot (1-p)^{10-10} \\
+&= \left(1-{1 \over 2}\right)^{10} + \left({1 \over 2}\right)^{10} \\
+&= {2 \over 2^{10}} \approx 0.00195
+\end{align*}
+
+(b) If the probability of heads is 0.1, what is the power of the test?
+\begin{align*}
+1 - \beta &= E_{1}(d(X)) \\
+&= 1 \cdot P_{1}(X \in \{0, 10\}) + 0 \cdot P_{1}(X \in \{1, 2, .., 9\}) \\
+&= \binom{10}{0} \cdot p^{0} \cdot (1-p)^{10-0} + \binom{10}{10} \cdot p^{10} \cdot (1-p)^{10-10} \\
+&= (1-0.1)^{10} + (0.1)^{10} \approx 0.3487
+\end{align*}
+
+(c) If the test instead rejects if the number of observed heads is ≤ 1 or ≥ 9, what is the
+significance level?
+
+\begin{align*}
+\alpha &= P(X=0) + P(X=1) + P(X=9) + P(X=10) \\
+&= \binom{10}{0} \cdot p^{0} \cdot (1-p)^{10-0} + 
+   \binom{10}{1} \cdot p^{1} \cdot (1-p)^{10-1} + 
+   \binom{10}{9} \cdot p^{9} \cdot (1-p)^{10-9} + 
+   \binom{10}{10} \cdot p^{10} \cdot (1-p)^{10-10} \\
+&= \binom{10}{0} \cdot 0.5^{0} \cdot (0.5)^{10} + 
+   \binom{10}{1} \cdot 0.5^{1} \cdot (0.5)^{9} + 
+   \binom{10}{9} \cdot 0.5^{9} \cdot (0.5)^{1} + 
+   \binom{10}{10} \cdot 0.5^{10} \cdot (0.5)^{0} \\
+&= 0.5^{10} + 10 \cdot 0.5^{10} + 10 \cdot 0.5^{10} + 0.5^{10} \\
+&= 22 \cdot 0.5^{10} \\
+&= 0.02148438
+\end{align*}
+``` {r}
+
+```
+
+
+## Question 2
+Based on Rice 9.2) Which of the following hypotheses are simple, and which are composite?
+Justify your answers.
+
+(a) X follows a uniform distribution on [0,1].  
+**simple**, because it gives us the information about the kind of random variable and its parameters. 
+
+(b) A die is unbiased.  
+This is quite tricky - this will be **simple** if its a fair 6-sided die with probability of each side comes as a result of a toss is ${1 \over 6}$. On the other hand, this will be a **composite** one if it has more than 6 sides (it's possible) and therefore we will have no idea about the random variables involved in the case.
+
+(c) X follows a normal distribution with mean 0 and variance $\sigma^2$ > 10.   
+**composite**, since we don't know exactly the value for its variance. It can be $X \sim N(0, 20)$ and $X \sim N(0, 200)$, which have a very different shape.
+
+(d) X follows a normal distribution with mean $\mu$ = 0.  
+**composite**, as stated in c), we do not know exactly the distribution of the random variable stated in the question, as the variance can be any positive real number.
+
+## Question 3
+(Based on Rice 9.5) True or false and state why:
+
+(a) The significance level of a statistical test is equal to the probability that the null hypothesis is true.  
+**false** - The definition of significance level is the probability of rejecting the null hypothesis, when it is actually true.
+
+(b) If the significance level of a test is decreased, the power would be expected to increase.  
+**false** - The power of the test is the probability of rejecting the null hypothesis when it is not true. We are less likely to reject the null hypothesis with low significance level.
+
+(c) If a test is rejected at the significance level $\alpha$, the probability that the null hypothesis is
+true equals $\alpha$.  
+**false** - Null hypothesis is not a random variable, so it does not makes sense to talk about probability in this case.
+
+(d) The probability that the null hypothesis is falsely rejected is equal to the power of the
+test.  
+**false** - The power of the test is the ability to correctly reject the null hypothesis.
+
+(e) A type I error occurs when the test statistic falls in the rejection region of the test.  
+**false** - type I error is a case where we reject the null hypothesis when it is actually true. However, when the test statistic falls into the rejection region, we reject the null hypothesis, whether it is true or not.
+
+(f) A type II error is more serious than a type I error.  
+**false** - Type I error happens when we mistakenly reject the null hypothesis when it is actually true, while the type II error occurs when we do not reject the null hypothesis when the alternate hypothesis is true. Type II error is not necessarily more serious than type I error, as it highly depends on case at hand. For instance, imagine you got tested for COVID and we have two hypotheses as the outcome:  
+$H_{0}$ : you have COVID, and  
+$H_{A}$ : you do not have COVID  
+In this case, type II error is more important to be addressed as the consequences of it is that you will be diagnosed that you do not have COVID, where in fact you do have one.
+
+(g) The power of a test is determined by the null distribution of the test statistic.  
+**false** - The power of the test is the probability of rejecting the null hypothesis when in fact it is not true. However, the null hypothesis has no effect in determining the power of the test.
+
+(h) The likelihood ratio is a random variable.  
+**true** - the likelihood ratio is the ratio of likelihood of the observed sample under the null hypothesis to the likelihood of the observed sample under the alternate hypothesis. Different samples will produce different likelihood ratios, so it is a random variable.
+
+## Question 4
+(Based on Rice 9.30) Suppose that the null hypothesis is true, that the distribution of the
+test statistic, T say, is continuous with cdf F and that the test rejects for large values of T. Let V denote the p-value of the test.
+
+(a) Show that V = 1 −F(T).  
+We know that:
+1) null hypothesis is true,
+2) T is a continuous RV with CDF F,
+3) the test rejects for large values of T,
+4) V = p-value of the test
+
+say $T = t$ for the observed value of the test statistic, then the p-value of the test become:
+\begin{align*}
+V &= P(T > t | H_{0}) \\
+&= 1 - P(T \le t | H_{0}) \\
+&= 1 - F(t)
+\end{align*}
+
+(b) Conclude that the null distribution of V is uniform.
+For $x \in [0, 1]$, the cdf of V defined as:
+\begin{align*}
+F_{V}(x) &= P(V \le x) \\
+&= P(1 - F(T) \le x) \\
+&= P(F(T) \ge 1 - x) \\
+&= 1 - P(F(T) < 1 - x) \\
+&= 1 - (1 - x) \\
+&= x \\
+\end{align*}
+
+Applying derivative to the result, we observe that the density function of V is:
+\begin{align*}
+F_{V}^{'}(x) = (x)' = 1, x \in [0, 1]
+\end{align*}
+
+Which is exactly the density function of a uniform random variable.
+
+(c) If the null hypothesis is true, what is the probability that the p-value is greater than .1?  
+from b) we know that the p-value is a uniform random variable on [0, 1]. Therefore,
+\begin{align*}
+P(V > 0.1) = P(1 - V \le 0.1) \\
+&= 1 - F_{V}(0.1) \\
+&= 1 - 0.1 \\
+&= 0.9
+\end{align*}
+
+(d) Show that the test that rejects if V < $\alpha$ has significance level $\alpha$.  
+We know that V is uniform and the significance level of a test is the expected value of the decision function under the probability law described in the null hypothesis, so:
+
+\begin{align*}
+E(d(X|H_{0})) = P(V < \alpha|H_{0}) \\
+= F_{V}(\alpha) 
+= \alpha
+\end{align*}
+
+## Question 5
+(Based on Rice 9.42) Nylon bars were tested for brittleness. Each of the 280 bars was molded
+under similar conditions and was tested in five places. Assuming that each bar has uniform
+composition, the number of breaks on a given bar should be binomially distributed with five
+trials and an unknown probability of p of failure. If the bars are all of the same uniform
+strength, p should be the same for all of them; if they are of different strengths, p should vary from bar to bar. Thus, the H0 is that the p’s are all equal. The following table summarizes the outcome of the experiment:
+
+(a) Under the given assumption, the data in the table consist of 280 observations of independent binomial random variables. Find the mle of p.
+
+Let $p_{i}$ be the probability that the $i$-th bar breaks for every $i \in \{1, 2, ..., 280\}$. Denoting the $X_{i}$ as the total number of bar breaks with the $i$-th bar, then $X_{i}$ is a binomial RV with $n = 5$ represents the number of trials and $p_{i}$ represents the probability of success. Hence, the probability that the $i$-th bar breaks at $k$ places becomes:
+\begin{align*}
+P(X_{i} = k) = \binom{5}{k} \cdot p_{i}^{k} \cdot (1 - p_{i})^{5-k}, k \in \{0, 1, 2, 3, 4, 5\}
+\end{align*}
+
+the null hypothesis that all bars $p_{i}$ are equal to $p$, hence:
+\begin{align*}
+\theta_{k}(p) = \binom{5}{k} \cdot p^{k} \cdot (1 - p)^{5-k}, k \in \{0, 1, 2, 3, 4, 5\}
+\end{align*}
+
+which defined as the probability that any bar breaks at $k$ places. 
+
+Let $O_{k}$ be the observed counts, i.e. $O_{0}$ is the number of bars that did not break in any of the five places, and so on).
+
+Under the null hypothesis, the likelihood function is:
+\begin{align*}
+lik(p) &= \prod_{k=0}^{5} \theta_{k}(p)^{O_{i}} \\
+&= \left[\prod_{k=0}^{5}\binom{5}{k} \right] \cdot p^{\sum_{k=0}^{5} k \cdot O_{k}} \cdot (1-p)^{\sum_{k=0}^{5} (5-k) \cdot O_{k}} \\
+\end{align*}
+
+Applying natural logarithm on both ends for easier calculation, we get:
+\begin{align*}
+l(p) = ln(lik(p)) = \sum_{k=0}^{5}ln\left[\binom{5}{k}\right] + \sum_{k=0}^{5} k \cdot O_{k} \cdot ln(p) + \sum_{k=0}^{5} (5-k) \cdot O_{k} \cdot ln(1-p)
+\end{align*}
+
+Derivative of $l$ with respect to $p$ is:
+\begin{align*}
+l'(p) = {1 \over p} \cdot \sum_{k=0}^{5} k \cdot O_{k} - {1 \over 1-p} \cdot \sum_{k=0}^{5} (5-k) \cdot O_{k}
+\end{align*}
+
+Stationary points are the null-points of the derivative, hence:
+
+\begin{align*}
+l'(p) = 0 &\Leftrightarrow {1 \over p} \cdot \sum_{k=0}^{5} k \cdot O_{k} - {1 \over 1-p} \cdot \sum_{k=0}^{5} (5-k) \cdot O_{k} = 0 \\
+&\Leftrightarrow (1 - p) \cdot \sum_{k=0}^{5} k \cdot O_{k} - p \cdot \sum_{k=0}^{5} (5-k) \cdot O_{k} = 0 \\
+&\Leftrightarrow p = {\sum_{k=0}^{5} k \cdot O_{k} \over 5 \sum_{k=0}^{5} O_{k}} \\
+\end{align*}
+
+Calculating the second derivative of $l$ with respect to $p$, we get:
+
+\begin{align*}
+l''(p) = {1 \over p^2} \sum_{k=0}^{5} k \cdot O_{k} - {1 \over (1-p)^2} \sum_{k=0}^{5} (5-k) \cdot O_{k} < 0
+\end{align*}
+
+Therefore, we know that the log-likelihood function is concave. Hence:
+\begin{align*}
+\hat{p} &= {\sum_{k=0}^{5} k \cdot O_{k} \over 5 \sum_{k=0}^{5} O_{k}} \\
+&= {199 \over 5 \cdot 280} \\
+&= 0.142
+\end{align*}
+
+(b) Pooling the last three cells, test the agreement of the observed frequency distribution
+with the binomial distribution using Pearson’s chi-square test.
+
+``` {r}
+get_theta <- function(n, k, p) {
+  return(round(choose(n, k) * p^k * (1-p)^(n-k), digits=7))
+}
+
+theta_0 <- get_theta(5, 0, 0.142)
+theta_1 <- get_theta(5, 1, 0.142)
+theta_2 <- get_theta(5, 2, 0.142)
+theta_3 <- get_theta(5, 3, 0.142)
+theta_4 <- get_theta(5, 4, 0.142)
+theta_5 <- get_theta(5, 5, 0.142)
+
+cat(paste("theta value for k = 0 is", theta_0, "\n",
+          "theta value for k = 1 is", theta_1, "\n",
+          "theta value for k = 2 is", theta_2, "\n",
+          "theta value for k = 3 is", theta_3, "\n",
+          "theta value for k = 4 is", theta_4, "\n",
+          "theta value for k = 5 is", theta_5, "\n"
+          ))
+```
+
+We want to test:
+$$H_{0} : \theta_{k}(p) = \theta_{k}(\hat{p})$$
+
+
+Using Pearson's $\chi^2$ statistic,
+$$\chi^2 = \sum_{i=1}^{6} {(O_{i} - E_{i})^2 \over E_{i}} $$
+with $m = 6$, $k = 1$ -> distributed to a $\chi^2$ distribution with 4 degree of freedom.
+
+``` {r}
+get_pearson <- function(a, b) {
+  return((a-b)^2 / b)
+}
+
+bar <- c(0, 1, 2, 3, 4, 5)
+freq <- c(157, 69, 35, 17, 1, 1)
+e <- 280 * c(theta_0, theta_1, theta_2, theta_3, theta_4, theta_5)
+
+pearson_val <- c()
+
+chi1 <- (freq[1]-e[1])^2 / e[1]
+chi2 <- (freq[2]-e[2])^2 / e[2]
+chi3 <- (freq[3]-e[3])^2 / e[3]
+chi4 <- ((freq[4]+freq[5]+freq[6])-(e[4]+e[5]+e[6]))^2 / (e[4]+e[5]+e[6])
+
+chi <- chi1 + chi2 + chi3 + chi4
+(res <- 1 - pchisq(chi,2))
+```
+
+
+
+## Question 6
+In this problem you will develop and apply a test for normality based on the coefficient of
+skewness as defined in Section 9.9 of Rice.
+(a) Write an R function to compute the coefficient of skewness, b1.
+
+``` {r b1 function}
+get_coef_skewness <- function(x) {
+  return(sum((x - mean(x)^3)/var(x)^3)/length(x))
+}
+```
+
+(b) Use simulation to approximate the sampling distribution of b1 when the data is modeled
+by 100 independent N(0,1) RVs.
+``` {r simulate b1}
+b1 <- c()
+
+for (i in 1:1000) {
+  val <- get_coef_skewness(rnorm(100))
+  b1 <- append(b1, val)
+}
+
+plot(density(b1))
+```
+
+(c) Test 1000 data sets each containing 100 independent N(0,1) RVs for normality. For this
+test H0 is that the data are iid N(0,1) and HAis that the data are not iid N(0,1).
+Use the sampling distribution of b1 to compute an approximate p-value for each test.
+Generate a Q-Q plot of these p-values relative to a theoretical U(0,1) distribution. Does
+the shape of this plot match your expectations? Explain.
+``` {r qqplot standard-normal}
+test <- c()
+p_value <- c()
+
+for (i in 1:1000) {
+  val <- get_coef_skewness(rnorm(100))
+  test <- append(test, val)
+}
+
+for (i in 1:1000) {
+  lower_bound <- sum(b1 < test[i])/length(b1)
+  upper_bound <- sum(b1 > test[i])/length(b1)
+  res <- min(lower_bound, upper_bound)*2
+  p_value <- append(p_value, res)
+}
+
+qqplot(qunif(seq(0, 1, 0.001)), p_value)
+```
+
+(d) Test 1000 data sets each containing 100 independent Poisson RVs with $\lambda$ = 1 for nor-
+mality. Compute an approximate p-value for each test. Generate a Q-Q plot of these
+p-values relative to a theoretical U(0,1) distribution. Does the shape of this plot match
+your expectations? Explain.
+``` {r qqplot poisson}
+test <- c()
+p_value <- c()
+
+for (i in 1:1000) {
+  val <- get_coef_skewness(rpois(100, 1))
+  test <- c(test, val)
+}
+
+for (i in 1:1000) {
+  lower_bound <- sum(b1 < test[i])/length(b1)
+  upper_bound <- sum(b1 > test[i])/length(b1)
+  res <- min(lower_bound, upper_bound)*2
+  p_value <- c(p_value, res)
+}
+
+qqplot(qunif(seq(0, 1, 0.001)), p_value)
+```
